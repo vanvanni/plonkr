@@ -9,7 +9,12 @@ import (
 	"strings"
 )
 
-const maxDepth = 64
+const (
+	maxDepth = 64
+	// maxSourceSize bounds every profile and snippet file, matching the limit
+	// plonk applies to a profile named by path.
+	maxSourceSize = 1 << 20
+)
 
 type profileLoader struct {
 	base       string
@@ -72,7 +77,7 @@ func (l *profileLoader) load(name string, stack []string) (compiledProfile, erro
 		return compiledProfile{}, err
 	}
 	filename := name + ".hcl"
-	source, err := readRegularFile(root, filename, 0)
+	source, err := readRegularFile(root, filename, maxSourceSize)
 	if err != nil {
 		return compiledProfile{}, fmt.Errorf("read profile %q: %w", name, err)
 	}

@@ -1,10 +1,12 @@
 package cmd
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 
 	"golang.org/x/crypto/ssh"
 )
@@ -16,6 +18,13 @@ const maxKeySize = 1 << 20
 func ReadKeySource(path string) ([]byte, error) {
 	if path == "" {
 		return nil, errors.New("key source path must not be empty")
+	}
+	// Profiles accept POSIX and Windows spellings so they validate on any
+	// controller, but only a path absolute on this OS names the intended file.
+	// "/keys/id" would otherwise resolve against the current drive on Windows,
+	// and "C:\keys\id" against the working directory on Linux.
+	if !filepath.IsAbs(path) {
+		return nil, fmt.Errorf("key source %q is not an absolute path on this system", path)
 	}
 	before, err := os.Lstat(path)
 	if err != nil {
@@ -68,5 +77,28 @@ func ReadKeySource(path string) ([]byte, error) {
 		}
 		return nil, fmt.Errorf("parse deploy key %q: %w", path, err)
 	}
+	if err := checkOpenSSHLayout(raw); err != nil {
+		clear(raw)
+		return nil, fmt.Errorf("deploy key %q: %w", path, err)
+	}
 	return raw, nil
+}
+
+// checkOpenSSHLayout rejects keys that Go parses but OpenSSH on the target
+// refuses with the opaque "error in libcrypto". The key is copied byte for byte,
+// so a bad layout is reported here instead of being repaired.
+//
+// Only the OpenSSH key format is strict: it needs LF line endings and a final
+// newline. Legacy PEM keys tolerate both.
+func checkOpenSSHLayout(raw []byte) error {
+	if !bytes.HasPrefix(bytes.TrimLeft(raw, " \t\r\n"), []byte("-----BEGIN OPENSSH PRIVATE KEY-----")) {
+		return nil
+	}
+	if bytes.ContainsRune(raw, '\r') {
+		return errors.New("uses Windows (CRLF) line endings, which OpenSSH rejects; convert the file to LF line endings (for example with `dos2unix`)")
+	}
+	if raw[len(raw)-1] != '\n' {
+		return errors.New("must end with a newline, otherwise OpenSSH rejects it; add a final newline")
+	}
+	return nil
 }

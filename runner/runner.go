@@ -7,7 +7,7 @@ import (
 	"strings"
 	"sync"
 
-	"plonk/profile"
+	"github.com/vanvanni/plonkr/profile"
 )
 
 type eventWriter struct {
@@ -35,161 +35,49 @@ func Run(ctx context.Context, plan *profile.Plan, opts Options, exec StepExecuto
 		ctx = context.Background()
 	}
 
-	summary := Summary{
-		DryRun: opts.DryRun,
-		Tasks:  make([]TaskResult, len(plan.Tasks)),
-	}
-	for i, task := range plan.Tasks {
-		steps := make([]StepResult, len(task.Steps))
-		for j, step := range task.Steps {
-			steps[j] = StepResult{Step: step, Status: StatusPending}
-		}
-		summary.Tasks[i] = TaskResult{
-			Task:   task,
-			Status: StatusPending,
-			Steps:  steps,
-		}
-	}
-
-	var mu sync.Mutex
-	send := func(e Event) {
-		if emit == nil {
-			return
-		}
-		mu.Lock()
-		defer mu.Unlock()
-		emit(e)
-	}
-
+	r := newRun(plan, opts, emit)
 	for i, task := range plan.Tasks {
 		if err := ctx.Err(); err != nil {
-			finalizeCounts(&summary)
-			summary.Status = StatusCancelled
-			summary.Err = err
-			return summary, err
+			return r.abort(StatusCancelled, err)
 		}
 
-		send(Event{Kind: TaskStarted, Task: i, Status: StatusRunning, Text: task.Name})
+		r.send(Event{Kind: TaskStarted, Task: i, Status: StatusRunning, Text: task.Name})
 
 		if task.Bypass || opts.BypassTasks[task.Name] {
 			reason := "bypassed via --bypass"
 			if task.Bypass {
 				reason = "bypassed in profile"
 			}
-			for j, step := range task.Steps {
-				summary.Tasks[i].Steps[j].Status = StatusBypassed
-				summary.Tasks[i].Steps[j].Reason = reason
-				summary.Tasks[i].Counts.Add(StatusBypassed)
-				send(Event{
-					Kind:   StepDone,
-					Task:   i,
-					Step:   j,
-					Status: StatusBypassed,
-					Text:   step.Text,
-					Reason: reason,
-				})
+			for j := range task.Steps {
+				r.finishStep(i, j, StatusBypassed, reason, nil)
 			}
-			summary.Tasks[i].Status = StatusBypassed
-			summary.Tasks[i].Reason = reason
-			send(Event{
-				Kind:   TaskDone,
-				Task:   i,
-				Status: StatusBypassed,
-				Text:   task.Name,
-				Reason: reason,
-			})
+			r.finishTask(i, StatusBypassed, reason, nil)
 			continue
 		}
 
 		for j, step := range task.Steps {
 			if err := ctx.Err(); err != nil {
-				summary.Tasks[i].Steps[j].Status = StatusCancelled
-				summary.Tasks[i].Steps[j].Err = err
-				send(Event{
-					Kind:   StepDone,
-					Task:   i,
-					Step:   j,
-					Status: StatusCancelled,
-					Text:   step.Text,
-					Err:    err,
-				})
-				summary.Tasks[i].Status = StatusCancelled
-				send(Event{
-					Kind:   TaskDone,
-					Task:   i,
-					Status: StatusCancelled,
-					Text:   task.Name,
-					Err:    err,
-				})
-				finalizeCounts(&summary)
-				summary.Status = StatusCancelled
-				summary.Err = err
-				return summary, err
+				r.finishStep(i, j, StatusCancelled, "", err)
+				r.finishTask(i, StatusCancelled, "", err)
+				return r.abort(StatusCancelled, err)
 			}
 
 			if missing := step.MissingFlags(opts.Flags); len(missing) > 0 {
-				reason := "missing flags: --" + strings.Join(missing, ", --")
-				summary.Tasks[i].Steps[j].Status = StatusSkipped
-				summary.Tasks[i].Steps[j].Reason = reason
-				summary.Tasks[i].Counts.Add(StatusSkipped)
-				send(Event{
-					Kind:   StepDone,
-					Task:   i,
-					Step:   j,
-					Status: StatusSkipped,
-					Text:   step.Text,
-					Reason: reason,
-				})
+				r.finishStep(i, j, StatusSkipped, "missing flags: --"+strings.Join(missing, ", --"), nil)
 				continue
 			}
 
-			send(Event{
-				Kind:   StepStarted,
-				Task:   i,
-				Step:   j,
-				Status: StatusRunning,
-				Text:   step.Text,
-			})
-
-			if opts.DryRun {
-				if step.Op == profile.OpLog {
-					send(Event{
-						Kind:  Message,
-						Task:  i,
-						Step:  j,
-						Text:  step.Text,
-						Color: step.Color,
-					})
-				}
-				summary.Tasks[i].Steps[j].Status = StatusPlanned
-				summary.Tasks[i].Counts.Add(StatusPlanned)
-				send(Event{
-					Kind:   StepDone,
-					Task:   i,
-					Step:   j,
-					Status: StatusPlanned,
-					Text:   step.Text,
-				})
-				continue
-			}
+			r.send(Event{Kind: StepStarted, Task: i, Step: j, Status: StatusRunning, Text: step.Text})
 
 			if step.Op == profile.OpLog {
-				send(Event{
-					Kind:  Message,
-					Task:  i,
-					Step:  j,
-					Text:  step.Text,
-					Color: step.Color,
-				})
-				summary.Tasks[i].Steps[j].Status = StatusCompleted
-				summary.Tasks[i].Counts.Add(StatusCompleted)
-				send(Event{
-					Kind:   StepDone,
-					Task:   i,
-					Step:   j,
-					Status: StatusCompleted,
-					Text:   step.Text,
-				})
+				r.send(Event{Kind: Message, Task: i, Step: j, Text: step.Text, Color: step.Color})
+			}
+			if opts.DryRun {
+				r.finishStep(i, j, StatusPlanned, "", nil)
+				continue
+			}
+			if step.Op == profile.OpLog {
+				r.finishStep(i, j, StatusCompleted, "", nil)
 				continue
 			}
 
@@ -197,70 +85,92 @@ func Run(ctx context.Context, plan *profile.Plan, opts Options, exec StepExecuto
 			if exec == nil {
 				err = errors.New("step executor is nil")
 			} else {
-				out := eventWriter{emit: send, event: Event{Kind: Output, Task: i, Step: j}}
-				errOut := eventWriter{emit: send, event: Event{Kind: Output, Task: i, Step: j, Stderr: true}}
+				out := eventWriter{emit: r.send, event: Event{Kind: Output, Task: i, Step: j}}
+				errOut := eventWriter{emit: r.send, event: Event{Kind: Output, Task: i, Step: j, Stderr: true}}
 				err = exec(ctx, step, out, errOut)
 			}
-
 			if err != nil {
-				st := StatusFailed
+				status := StatusFailed
 				stepErr := fmt.Errorf("task %q, step %d (%s): %w", task.Name, j+1, step.Op.String(), err)
 				if ctxErr := ctx.Err(); ctxErr != nil {
-					st = StatusCancelled
-					stepErr = ctxErr
+					status, stepErr = StatusCancelled, ctxErr
 				}
-				summary.Tasks[i].Steps[j].Status = st
-				summary.Tasks[i].Steps[j].Err = stepErr
-				summary.Tasks[i].Status = st
-				send(Event{
-					Kind:   StepDone,
-					Task:   i,
-					Step:   j,
-					Status: st,
-					Text:   step.Text,
-					Err:    stepErr,
-				})
-				send(Event{
-					Kind:   TaskDone,
-					Task:   i,
-					Status: st,
-					Text:   task.Name,
-					Err:    stepErr,
-				})
-				finalizeCounts(&summary)
-				summary.Status = st
-				summary.Err = stepErr
-				return summary, stepErr
+				r.finishStep(i, j, status, "", stepErr)
+				r.finishTask(i, status, "", stepErr)
+				return r.abort(status, stepErr)
 			}
-
-			summary.Tasks[i].Steps[j].Status = StatusCompleted
-			summary.Tasks[i].Counts.Add(StatusCompleted)
-			send(Event{
-				Kind:   StepDone,
-				Task:   i,
-				Step:   j,
-				Status: StatusCompleted,
-				Text:   step.Text,
-			})
+			r.finishStep(i, j, StatusCompleted, "", nil)
 		}
 
-		taskStatus := aggregateStatus(opts.DryRun, summary.Tasks[i].Counts)
-		summary.Tasks[i].Status = taskStatus
-		send(Event{
-			Kind:   TaskDone,
-			Task:   i,
-			Status: taskStatus,
-			Text:   task.Name,
-		})
+		r.finishTask(i, aggregateStatus(opts.DryRun, r.summary.Tasks[i].Counts), "", nil)
 	}
 
-	totalSteps := finalizeCounts(&summary)
-	if totalSteps == 0 {
-		summary.Status = StatusPending
+	if totalSteps := finalizeCounts(&r.summary); totalSteps == 0 {
+		r.summary.Status = StatusPending
 	} else {
-		summary.Status = aggregateStatus(opts.DryRun, summary.Counts)
+		r.summary.Status = aggregateStatus(opts.DryRun, r.summary.Counts)
 	}
-	return summary, nil
+	return r.summary, nil
+}
+
+// execution tracks one Run: the summary being built and the serialized emitter.
+type execution struct {
+	plan    *profile.Plan
+	summary Summary
+	emit    func(Event)
+	mu      sync.Mutex
+}
+
+func newRun(plan *profile.Plan, opts Options, emit func(Event)) *execution {
+	r := &execution{
+		plan:    plan,
+		emit:    emit,
+		summary: Summary{DryRun: opts.DryRun, Tasks: make([]TaskResult, len(plan.Tasks))},
+	}
+	for i, task := range plan.Tasks {
+		steps := make([]StepResult, len(task.Steps))
+		for j, step := range task.Steps {
+			steps[j] = StepResult{Step: step, Status: StatusPending}
+		}
+		r.summary.Tasks[i] = TaskResult{Task: task, Status: StatusPending, Steps: steps}
+	}
+	return r
+}
+
+// send serializes event delivery; stdout and stderr writers call it concurrently.
+func (r *execution) send(e Event) {
+	if r.emit == nil {
+		return
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.emit(e)
+}
+
+// finishStep records a step outcome and reports it.
+func (r *execution) finishStep(task, step int, status Status, reason string, err error) {
+	result := &r.summary.Tasks[task].Steps[step]
+	result.Status, result.Reason, result.Err = status, reason, err
+	r.summary.Tasks[task].Counts.Add(status)
+	r.send(Event{
+		Kind: StepDone, Task: task, Step: step, Status: status,
+		Text: r.plan.Tasks[task].Steps[step].Text, Reason: reason, Err: err,
+	})
+}
+
+// finishTask records a task outcome and reports it.
+func (r *execution) finishTask(task int, status Status, reason string, err error) {
+	result := &r.summary.Tasks[task]
+	result.Status, result.Reason = status, reason
+	r.send(Event{Kind: TaskDone, Task: task, Status: status, Text: r.plan.Tasks[task].Name, Reason: reason, Err: err})
+}
+
+// abort ends the run early with status and err.
+func (r *execution) abort(status Status, err error) (Summary, error) {
+	finalizeCounts(&r.summary)
+	r.summary.Status = status
+	r.summary.Err = err
+	return r.summary, err
 }
 
 func finalizeCounts(summary *Summary) int {

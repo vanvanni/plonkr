@@ -9,8 +9,8 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	"plonk/profile"
-	"plonk/ui"
+	"github.com/vanvanni/plonkr/profile"
+	"github.com/vanvanni/plonkr/ui"
 )
 
 const maxProfileFileSize = 1 << 20

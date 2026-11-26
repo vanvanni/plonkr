@@ -1,0 +1,18 @@
+# Keep LF in the repository and in checkouts. Go sources, shell scripts, HCL
+# profiles and unit templates are consumed by Linux targets, where a carriage
+# return corrupts commands and unit files.
+* text=auto
+*.go text eol=lf
+*.hcl text eol=lf
+*.tmpl text eol=lf
+*.py text eol=lf
+*.sh text eol=lf
+*.mjs text eol=lf
+*.md text eol=lf
+*.html text eol=lf
+*.css text eol=lf
+*.js text eol=lf
+*.yml text eol=lf
+*.png binary
+*.ico binary
+*.figcraft binary

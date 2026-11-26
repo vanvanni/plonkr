@@ -7,15 +7,21 @@ import (
 	"os/signal"
 	"syscall"
 
-	"plonk/cmd"
+	"github.com/vanvanni/plonkr/cmd"
 )
 
 func main() {
+	os.Exit(run())
+}
+
+// run owns every defer: os.Exit skips them, so main exits only after run returns.
+func run() int {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
 	err := cmd.New(os.Stdin, os.Stdout, os.Stderr).ExecuteContext(ctx)
-	stop()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "plonk:", err)
+		fmt.Fprintln(os.Stderr, "plonk:", cmd.ErrorText(err))
 	}
-	os.Exit(cmd.ExitCode(err))
+	return cmd.ExitCode(err)
 }

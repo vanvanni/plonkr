@@ -14,8 +14,8 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
-	"plonk/profile"
-	"plonk/runner"
+	"github.com/vanvanni/plonkr/profile"
+	"github.com/vanvanni/plonkr/runner"
 )
 
 const tailLimit = 32 * 1024
@@ -128,7 +128,11 @@ func (m *model) event(e runner.Event) {
 			return
 		}
 		if e.Kind == runner.StepStarted {
-			m.command = singleLine(e.Text)
+			// log() messages are not commands; they already appear in the output.
+			m.command = ""
+			if m.plan.Tasks[e.Task].Steps[e.Step].Op != profile.OpLog {
+				m.command = singleLine(e.Text)
+			}
 			task.steps[e.Step] = runner.StatusRunning
 		} else {
 			task.steps[e.Step] = e.Status
@@ -320,7 +324,7 @@ func Run(ctx context.Context, host string, plan *profile.Plan, work func(context
 		case <-stop:
 		}
 	}()
-	_, uiErr := tea.NewProgram(m, options...).Run()
+	_, uiErr := tea.NewProgram(m, append([]tea.ProgramOption{tea.WithoutSignalHandler()}, options...)...).Run()
 	cancel()
 	close(stop)
 	<-done

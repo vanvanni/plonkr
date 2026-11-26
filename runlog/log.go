@@ -12,8 +12,8 @@ import (
 	"unicode"
 
 	"github.com/charmbracelet/x/ansi"
-	"plonk/profile"
-	"plonk/runner"
+	"github.com/vanvanni/plonkr/profile"
+	"github.com/vanvanni/plonkr/runner"
 )
 
 type taskProgress struct {

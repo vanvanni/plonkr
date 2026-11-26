@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"strings"
 
-	"plonk/profile"
+	"github.com/vanvanni/plonkr/profile"
 )
 
 func groupScript(g profile.Group) string {
@@ -80,8 +80,9 @@ umask 077
 touch "$authorized"
 chmod 600 "$authorized"
 `)
+		keys.WriteString(appendLineFunc)
 		for _, key := range u.PublicKeys {
-			keys.WriteString("key=" + quote(key) + "\ngrep -qxF -- \"$key\" \"$authorized\" || printf '%s\\n' \"$key\" >> \"$authorized\"\n")
+			keys.WriteString("append_line " + quote(key) + " \"$authorized\"\n")
 		}
 		b.WriteString(asUser(u.Name, keys.String()) + "\n")
 	}

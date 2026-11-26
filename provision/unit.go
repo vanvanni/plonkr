@@ -3,7 +3,7 @@ package provision
 import (
 	"fmt"
 
-	"plonk/profile"
+	"github.com/vanvanni/plonkr/profile"
 )
 
 func unitScript(u profile.Unit) string {

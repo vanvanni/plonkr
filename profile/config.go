@@ -15,6 +15,9 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
+// maxGID is the largest valid Linux gid_t; (gid_t)-1 is reserved.
+const maxGID int64 = 1<<32 - 2
+
 var (
 	linuxName    = regexp.MustCompile(`^[a-z_][a-z0-9_-]{0,31}$`)
 	timezoneName = regexp.MustCompile(`^[A-Za-z0-9_+-]+(?:/[A-Za-z0-9_+-]+)*$`)
@@ -97,6 +100,9 @@ func decodeGroup(value cty.Value) (Group, error) {
 	group := Group{Name: fields.requiredString("name"), Create: fields.boolean("create", true)}
 	if _, set := fields.values["gid"]; set {
 		gid := fields.integer("gid", 1)
+		if int64(gid) > maxGID {
+			fields.fail("gid", fmt.Sprintf("must be an integer <= %d", maxGID))
+		}
 		group.GID = new(gid)
 	}
 	if fields.err != nil {

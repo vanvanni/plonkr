@@ -10,7 +10,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"plonk/profile"
+	"github.com/vanvanni/plonkr/profile"
 )
 
 func TestRunNilAndEmptyPlan(t *testing.T) {

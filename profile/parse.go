@@ -1,6 +1,7 @@
 package profile
 
 import (
+	"bytes"
 	"fmt"
 	"path/filepath"
 	"regexp"
@@ -48,7 +49,16 @@ func validatePlan(loaded compiledProfile, err error) (*Plan, error) {
 	return loaded.plan, nil
 }
 
+// normalizeNewlines converts CRLF to LF. Profiles edited on a Windows controller
+// would otherwise carry a trailing carriage return into heredoc shell commands
+// and rendered unit files, which break on the Linux target. Line and column
+// positions in diagnostics are unchanged.
+func normalizeNewlines(source []byte) []byte {
+	return bytes.ReplaceAll(source, []byte("\r\n"), []byte("\n"))
+}
+
 func parseBody(source []byte, filename string) (*hclsyntax.Body, error) {
+	source = normalizeNewlines(source)
 	file, diagnostics := hclsyntax.ParseConfig(documentBody(source, filename), filename, hcl.InitialPos)
 	if diagnostics.HasErrors() {
 		return nil, diagnostics

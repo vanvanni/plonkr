@@ -69,7 +69,7 @@ func (l *profileLoader) loadUnit(block *hcl.Block, units map[string]Unit) error 
 	if !utf8.Valid(data) {
 		return fmt.Errorf("unit source %q must be UTF-8", source)
 	}
-	expression, diagnostics := hclsyntax.ParseTemplate(data, filepath.Join(l.base, "files", local), hcl.InitialPos)
+	expression, diagnostics := hclsyntax.ParseTemplate(normalizeNewlines(data), filepath.Join(l.base, "files", local), hcl.InitialPos)
 	if diagnostics.HasErrors() {
 		return diagnostics
 	}

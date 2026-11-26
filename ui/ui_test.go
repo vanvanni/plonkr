@@ -11,8 +11,8 @@ import (
 	"unicode/utf8"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"plonk/profile"
-	"plonk/runner"
+	"github.com/vanvanni/plonkr/profile"
+	"github.com/vanvanni/plonkr/runner"
 )
 
 func TestMessageText(t *testing.T) {

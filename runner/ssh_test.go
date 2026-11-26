@@ -148,10 +148,10 @@ func TestSSHExecuteAndExecuteInput(t *testing.T) {
 		wantStdin string
 	}{
 		{
-			name:     "noninteractive execute quotes single quotes and newlines",
-			ssh:      SSH{Host: "user@alias", Stdin: strings.NewReader("from-struct")},
-			command:  "printf '%s\\n' \"it's ok\"\necho done",
-			wantArgs: []string{"-T", "-o", "BatchMode=yes", "--", "user@alias", "sh -ec 'printf '\"'\"'%s\\n'\"'\"' \"it'\"'\"'s ok\"\necho done'"},
+			name:      "noninteractive execute quotes single quotes and newlines",
+			ssh:       SSH{Host: "user@alias", Stdin: strings.NewReader("from-struct")},
+			command:   "printf '%s\\n' \"it's ok\"\necho done",
+			wantArgs:  []string{"-T", "-o", "BatchMode=yes", "--", "user@alias", "sh -ec 'printf '\"'\"'%s\\n'\"'\"' \"it'\"'\"'s ok\"\necho done'"},
 			wantStdin: "from-struct",
 		},
 		{

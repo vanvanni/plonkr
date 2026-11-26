@@ -171,7 +171,7 @@ func TestTaskValidation(t *testing.T) {
 		})
 	}
 
-	for _, name := range []string{"help", "tty", "dry-run", "no-tui", "profiles-dir", "bypass", "version"} {
+	for _, name := range []string{"help", "tty", "dry-run", "no-tui", "profiles-dir", "bypass", "version", "auto-approve"} {
 		t.Run(name, func(t *testing.T) {
 			source := taskSource("Check", fmt.Sprintf("order = 0\nscript = [flag(%q, \"true\")]", name))
 			_, err := Parse([]byte(source), "bad.hcl")
@@ -272,4 +272,12 @@ func publicKeyLine(t *testing.T) string {
 		t.Fatal(err)
 	}
 	return strings.TrimSpace(string(ssh.MarshalAuthorizedKey(key)))
+}
+
+func TestGIDUpperBound(t *testing.T) {
+	_, err := Parse([]byte(taskSource("x", "order = 0\nscript = [\"true\"]")+"\nconfiguration {\n  groups = [{ name = \"app\", gid = 4294967295 }]\n}\n"), "gid.hcl")
+	checkError(t, err, "gid must be an integer <= 4294967294")
+	if _, err := Parse([]byte(taskSource("x", "order = 0\nscript = [\"true\"]")+"\nconfiguration {\n  groups = [{ name = \"app\", gid = 4294967294 }]\n}\n"), "gid.hcl"); err != nil {
+		t.Fatal(err)
+	}
 }

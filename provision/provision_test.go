@@ -13,8 +13,8 @@ import (
 	"strings"
 	"testing"
 
-	"plonk/profile"
-	"plonk/runner"
+	"github.com/vanvanni/plonkr/profile"
+	"github.com/vanvanni/plonkr/runner"
 )
 
 func TestMain(m *testing.M) {
@@ -315,10 +315,10 @@ func TestGeneratedScriptsSyntaxAndContracts(t *testing.T) {
 	commitSHA256 := "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 
 	tests := []struct {
-		name      string
-		script    string
-		want      []string
-		forbid    []string
+		name   string
+		script string
+		want   []string
+		forbid []string
 	}{
 		{
 			name:   "group without gid",
@@ -394,7 +394,7 @@ func TestGeneratedScriptsSyntaxAndContracts(t *testing.T) {
 				"chmod 600",
 				"IdentitiesOnly=yes",
 				"BatchMode=yes",
-				"StrictHostKeyChecking=yes",
+				"StrictHostKeyChecking=no",
 				"UserKnownHostsFile=",
 				"rev-parse --is-inside-work-tree",
 				"remote get-url origin",
@@ -422,7 +422,7 @@ func TestGeneratedScriptsSyntaxAndContracts(t *testing.T) {
 				User: "deploy", Ref: commitSHA1,
 			}, nil),
 			want: []string{
-				"ssh_command='ssh -o BatchMode=yes -o StrictHostKeyChecking=yes'",
+				"ssh_command='ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o GlobalKnownHostsFile=/dev/null'",
 				"clone --no-checkout",
 				"checkout --detach",
 				`mv -T -- "$clone_tmp" "$destination"`,
@@ -537,7 +537,7 @@ func TestRepoScriptPOSIXExecution(t *testing.T) {
 			User: "deploy", Key: "/local/app.key",
 		}, []byte("test-key"))
 		start := strings.Index(script, "escape_sq()")
-		end := strings.Index(script, "if [ -e \"$destination\"")
+		end := strings.Index(script, "fresh=''")
 		if start < 0 || end <= start {
 			t.Fatalf("could not locate escape_sq block in script:\n%s", script)
 		}
@@ -558,7 +558,7 @@ func TestRepoScriptPOSIXExecution(t *testing.T) {
 		if lines[0] != "/tmp/o'brien/.ssh/plonkr-app.key" {
 			t.Errorf("key arg = %q", lines[0])
 		}
-		if lines[1] != "UserKnownHostsFile=/tmp/o'brien/.ssh/known_hosts" {
+		if lines[1] != "UserKnownHostsFile=/dev/null" {
 			t.Errorf("known_hosts arg = %q", lines[1])
 		}
 	})
@@ -666,6 +666,33 @@ func TestRepoScriptPOSIXExecution(t *testing.T) {
 		stillOriginal, _ := os.ReadFile(keyFile)
 		if !bytes.Equal(stillOriginal, keyBytes) {
 			t.Fatal("conflicting run modified existing key file")
+		}
+		// Approval is bound to the exact old bytes, and replacement is atomic.
+		for _, approval := range []struct {
+			hash    string
+			allowed bool
+		}{
+			{strings.Repeat("0", 64), false},
+			{fmt.Sprintf("%x", sha256.Sum256(keyBytes)), true},
+		} {
+			replaceCmd := exec.CommandContext(t.Context(), sh, "-ec", repoScriptReplacement(repo, otherKey, approval.hash))
+			replaceCmd.Env = posixEnv(sh, "HOME="+home)
+			replaceCmd.Stdin = bytes.NewReader(otherKey)
+			out, replaceErr := replaceCmd.CombinedOutput()
+			if (replaceErr == nil) != approval.allowed {
+				t.Fatalf("replacement allowed=%v: %v: %s", approval.allowed, replaceErr, out)
+			}
+			got, err := os.ReadFile(keyFile)
+			want := keyBytes
+			if approval.allowed {
+				want = otherKey
+			}
+			if err != nil || !bytes.Equal(got, want) {
+				t.Fatal("replacement bytes differ", err)
+			}
+		}
+		if err := os.WriteFile(keyFile, keyBytes, 0600); err != nil {
+			t.Fatal(err)
 		}
 
 		// 5. Mismatched origin URL fails cleanly.
@@ -920,4 +947,180 @@ esac
 			t.Fatalf("existing unit damaged after failed transfer: err=%v got=%q", err, still)
 		}
 	})
+}
+
+// A checkout directory prepared for the repository user is empty and exists, so
+// the script must clone into it rather than treating it as a foreign directory.
+func TestRepoScriptClonesIntoPreparedEmptyDirectory(t *testing.T) {
+	sh := findPOSIXShell()
+	if sh == "" {
+		t.Skip("no POSIX sh available")
+	}
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git not installed")
+	}
+	gitRun := func(args ...string) string {
+		t.Helper()
+		out, err := exec.CommandContext(t.Context(), "git", args...).CombinedOutput()
+		if err != nil {
+			t.Fatalf("git %v: %v: %s", args, err, out)
+		}
+		return strings.TrimSpace(string(out))
+	}
+	base := t.TempDir()
+	home := filepath.ToSlash(filepath.Join(base, "home"))
+	if err := os.MkdirAll(home, 0700); err != nil {
+		t.Fatal(err)
+	}
+	source := filepath.ToSlash(filepath.Join(base, "source"))
+	gitRun("init", "-b", "main", source)
+	gitRun("-C", source, "-c", "user.name=T", "-c", "user.email=t@example.test", "commit", "--allow-empty", "-m", "one")
+	gitRun("-C", source, "tag", "v1")
+	commit := gitRun("-C", source, "rev-parse", "HEAD")
+
+	run := func(repo profile.Repository) (string, error) {
+		cmd := exec.CommandContext(t.Context(), sh, "-ec", repoScript(repo, nil))
+		cmd.Env = posixEnv(sh, "HOME="+home)
+		out, err := cmd.CombinedOutput()
+		return string(out), err
+	}
+	prepared := func(name string) string {
+		dir := filepath.ToSlash(filepath.Join(base, name))
+		if err := os.Mkdir(dir, 0755); err != nil {
+			t.Fatal(err)
+		}
+		return dir
+	}
+
+	for _, tc := range []struct{ name, ref string }{{"default branch", ""}, {"branch", "main"}, {"tag", "v1"}, {"commit", commit}} {
+		t.Run(tc.name, func(t *testing.T) {
+			dest := prepared("dest-" + strings.ReplaceAll(tc.name, " ", "-"))
+			repo := profile.Repository{Name: "app", URL: source, Path: dest, User: "deploy", Ref: tc.ref}
+			if out, err := run(repo); err != nil || !strings.Contains(out, "Repository app ready") {
+				t.Fatalf("first run: err=%v out=%s", err, out)
+			}
+			if got := gitRun("-C", dest, "rev-parse", "HEAD"); got != commit {
+				t.Fatalf("HEAD = %s, want %s", got, commit)
+			}
+			if out, err := run(repo); err != nil || !strings.Contains(out, "already present and verified") {
+				t.Fatalf("second run: err=%v out=%s", err, out)
+			}
+		})
+	}
+
+	t.Run("failed commit checkout empties the prepared directory", func(t *testing.T) {
+		dest := prepared("dest-failure")
+		missing := strings.Repeat("a", 40)
+		out, err := run(profile.Repository{Name: "app", URL: source, Path: dest, User: "deploy", Ref: missing})
+		if err == nil {
+			t.Fatalf("checkout of a missing commit succeeded: %s", out)
+		}
+		entries, readErr := os.ReadDir(dest)
+		if readErr != nil || len(entries) != 0 {
+			t.Fatalf("prepared directory not emptied: err=%v entries=%v", readErr, entries)
+		}
+		// The directory is reusable once the ref is valid.
+		if out, err := run(profile.Repository{Name: "app", URL: source, Path: dest, User: "deploy", Ref: commit}); err != nil {
+			t.Fatalf("retry failed: %v: %s", err, out)
+		}
+	})
+
+	t.Run("non-empty directory without a repository is still refused", func(t *testing.T) {
+		dest := prepared("dest-occupied")
+		if err := os.WriteFile(filepath.Join(dest, "file"), []byte("x"), 0600); err != nil {
+			t.Fatal(err)
+		}
+		out, err := run(profile.Repository{Name: "app", URL: source, Path: dest, User: "deploy"})
+		if err == nil || !strings.Contains(out, "not a git repository root") {
+			t.Fatalf("err=%v out=%s", err, out)
+		}
+	})
+}
+
+func TestCheckoutDirScriptContract(t *testing.T) {
+	repo := profile.Repository{Name: "app", URL: "https://example.test/app.git", Path: "/srv/it's app", User: "deploy"}
+	script := checkoutDirScript(repo)
+	for _, want := range []string{
+		`if [ "$(id -u)" = 0 ]`, "sudo -n true", "runuser -u", "install -d -m 0755 -o",
+	} {
+		if !strings.Contains(script, want) {
+			t.Errorf("script missing %q:\n%s", want, script)
+		}
+	}
+	if sh := findPOSIXShell(); sh != "" {
+		if out, err := exec.CommandContext(t.Context(), sh, "-n", "-c", script).CombinedOutput(); err != nil {
+			t.Fatalf("syntax check: %v: %s", err, out)
+		}
+	}
+}
+
+// Hand-edited authorized_keys and known_hosts files often lack a final newline.
+func TestAppendLineTerminatesUnfinishedLastLine(t *testing.T) {
+	sh := findPOSIXShell()
+	if sh == "" {
+		t.Skip("no POSIX sh available")
+	}
+	file := filepath.ToSlash(filepath.Join(t.TempDir(), "authorized_keys"))
+	if err := os.WriteFile(file, []byte("ssh-ed25519 AAAA first"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	script := appendLineFunc + "append_line 'ssh-ed25519 BBBB second' " + quote(file) + "\n" +
+		"append_line 'ssh-ed25519 BBBB second' " + quote(file) + "\n" +
+		"append_line 'ssh-ed25519 AAAA first' " + quote(file) + "\n"
+	cmd := exec.CommandContext(t.Context(), sh, "-ec", script)
+	cmd.Env = posixEnv(sh)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("%v: %s", err, out)
+	}
+	got, err := os.ReadFile(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := "ssh-ed25519 AAAA first\nssh-ed25519 BBBB second\n"; string(got) != want {
+		t.Fatalf("file = %q, want %q", got, want)
+	}
+}
+
+// Private key material is written under umask 077; the checkout must not inherit it.
+func TestRepoScriptCheckoutKeepsCallerUmask(t *testing.T) {
+	sh := findPOSIXShell()
+	if sh == "" || runtime.GOOS == "windows" {
+		t.Skip("needs POSIX file modes")
+	}
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git not installed")
+	}
+	base := t.TempDir()
+	source := filepath.Join(base, "source")
+	for _, args := range [][]string{
+		{"init", "-b", "main", source},
+		{"-C", source, "-c", "user.name=T", "-c", "user.email=t@example.test", "commit", "--allow-empty", "-m", "one"},
+	} {
+		if out, err := exec.CommandContext(t.Context(), "git", args...).CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v: %s", args, err, out)
+		}
+	}
+	commit, err := exec.CommandContext(t.Context(), "git", "-C", source, "rev-parse", "HEAD").Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, ref := range []string{"", strings.TrimSpace(string(commit))} {
+		dest := filepath.Join(base, "dest-"+ref[:min(4, len(ref))])
+		script := "umask 022\n" + repoScript(profile.Repository{
+			Name: "app", URL: source, Path: dest, User: "deploy", Ref: ref,
+			KnownHosts: []string{"example.test ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI"},
+		}, nil) + "stat -c %a \"$destination\"\n"
+		cmd := exec.CommandContext(t.Context(), sh, "-ec", script)
+		cmd.Env = posixEnv(sh, "HOME="+filepath.Join(base, "home"))
+		if err := os.MkdirAll(filepath.Join(base, "home"), 0700); err != nil {
+			t.Fatal(err)
+		}
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("ref %q: %v: %s", ref, err, out)
+		}
+		if lines := strings.Fields(string(out)); lines[len(lines)-1] != "755" {
+			t.Fatalf("ref %q: checkout mode = %s, want 755\n%s", ref, lines[len(lines)-1], out)
+		}
+	}
 }

@@ -44,7 +44,7 @@ func (l *profileLoader) loadSnippets() error {
 		if entry.IsDir() || filepath.Ext(entry.Name()) != ".hcl" {
 			continue
 		}
-		source, err := readRegularFile(snippets, entry.Name(), 0)
+		source, err := readRegularFile(snippets, entry.Name(), maxSourceSize)
 		if err != nil {
 			return fmt.Errorf("read snippet file %q: %w", entry.Name(), err)
 		}

@@ -6,19 +6,17 @@ import (
 	"fmt"
 	"io"
 	"maps"
-	"os"
 	"os/exec"
 	"slices"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
-	"golang.org/x/term"
-	"plonk/profile"
-	"plonk/provision"
-	"plonk/runlog"
-	"plonk/runner"
-	"plonk/ui"
+	"github.com/vanvanni/plonkr/profile"
+	"github.com/vanvanni/plonkr/provision"
+	"github.com/vanvanni/plonkr/runlog"
+	"github.com/vanvanni/plonkr/runner"
+	"github.com/vanvanni/plonkr/ui"
 )
 
 func newRunCmd() *cobra.Command {
@@ -34,6 +32,7 @@ Built-in flags:
   --no-tui              Use plain streaming output instead of the terminal UI
   --profiles-dir DIR    Override the profiles base directory
   --bypass NAME         Bypass a named task (repeatable, exact match)
+  --auto-approve        Approve replacement of differing target deploy keys
 
 Profile flags discovered from flag("name", ...) are added dynamically.
 Run "plonk run HOST PROFILE --help" to inspect flags for a specific profile.`,
@@ -89,7 +88,7 @@ func scanProfilesDir(args []string) (string, bool, error) {
 }
 
 func executeProfile(ctx context.Context, host, profileRef string, plan *profile.Plan, args []string, stdin io.Reader, stdout, stderr io.Writer) error {
-	var dryRun, tty, noTUI bool
+	var dryRun, tty, noTUI, autoApprove bool
 	var profilesDir string
 	var bypassList []string
 
@@ -106,6 +105,7 @@ func executeProfile(ctx context.Context, host, profileRef string, plan *profile.
 	runCmd.Flags().BoolVar(&dryRun, "dry-run", false, "Preview planned, skipped, and bypassed steps without connecting")
 	runCmd.Flags().BoolVar(&tty, "tty", false, "Allocate a remote terminal for interactive SSH/sudo; disables TUI")
 	runCmd.Flags().BoolVar(&noTUI, "no-tui", false, "Use plain streaming output")
+	runCmd.Flags().BoolVar(&autoApprove, "auto-approve", false, "Approve replacement of differing target deploy keys without prompting")
 	runCmd.Flags().StringVar(&profilesDir, "profiles-dir", "", "Override the profiles base directory")
 	runCmd.Flags().StringArrayVar(&bypassList, "bypass", nil, "Bypass a named task (repeatable, case-sensitive)")
 
@@ -172,15 +172,23 @@ func executeProfile(ctx context.Context, host, profileRef string, plan *profile.
 		if tty {
 			ssh.Stdin = stdin
 		}
-		executor := provision.Executor{SSH: ssh, Plan: plan, Keys: keys}
+		executor := provision.Executor{SSH: ssh, Plan: plan, Keys: keys,
+			ApproveKeyReplacement: func(ctx context.Context, repo profile.Repository) error {
+				return approveKeyReplacement(ctx, repo, stdin, stderr, autoApprove)
+			},
+		}
+		// Keep replacement warnings and prompts visible outside an alternate screen.
+		if len(keys) > 0 {
+			noTUI = true
+		}
 		opts := runner.Options{
 			DryRun:      dryRun,
 			Flags:       enabled,
 			BypassTasks: bypassTasks,
 		}
 
-		work := func(workCtx context.Context, emit func(runner.Event)) error {
-			workCtx, cancel := context.WithCancel(workCtx)
+		work := func(parent context.Context, emit func(runner.Event)) error {
+			workCtx, cancel := context.WithCancel(parent)
 			defer cancel()
 
 			var logErr error
@@ -199,6 +207,10 @@ func executeProfile(ctx context.Context, host, profileRef string, plan *profile.
 				}
 			})
 			if logErr != nil {
+				// The cancellation was ours: report a log failure, not a user abort.
+				if parent.Err() == nil && errors.Is(runErr, context.Canceled) {
+					runErr = nil
+				}
 				return errors.Join(runErr, logErr)
 			}
 			return runErr
@@ -222,86 +234,6 @@ func executeProfile(ctx context.Context, host, profileRef string, plan *profile.
 
 	runCmd.SetArgs(args)
 	return runCmd.ExecuteContext(ctx)
-}
-
-type plainPrinter struct {
-	plan           *profile.Plan
-	dryRun         bool
-	stdout, stderr io.Writer
-	last           io.Writer
-	lineStart      bool
-}
-
-func (p *plainPrinter) newline() {
-	if !p.lineStart {
-		fmt.Fprintln(p.last)
-		p.lineStart = true
-	}
-}
-
-func (p *plainPrinter) emit(e runner.Event) {
-	if e.Kind == runner.Output {
-		if e.Text == "" {
-			return
-		}
-		target := p.stdout
-		if e.Stderr {
-			target = p.stderr
-		}
-		if !p.lineStart && p.last != target {
-			p.newline()
-		}
-		p.last = target
-		fmt.Fprint(target, e.Text)
-		p.lineStart = strings.HasSuffix(e.Text, "\n")
-		return
-	}
-
-	p.newline()
-	switch e.Kind {
-	case runner.TaskStarted:
-		if e.Task < 0 || e.Task >= len(p.plan.Tasks) {
-			return
-		}
-		task := p.plan.Tasks[e.Task]
-		name := strings.Join(strings.Fields(e.Text), " ")
-		if task.Baseline {
-			fmt.Fprintf(p.stdout, "\n[config] %s\n", name)
-		} else {
-			fmt.Fprintf(p.stdout, "\n[%d] %s\n", task.Order, name)
-		}
-	case runner.StepStarted:
-		if p.dryRun {
-			return
-		}
-		if e.Task >= 0 && e.Task < len(p.plan.Tasks) && e.Step >= 0 && e.Step < len(p.plan.Tasks[e.Task].Steps) {
-			if p.plan.Tasks[e.Task].Steps[e.Step].Op == profile.OpLog {
-				return
-			}
-		}
-		fmt.Fprintf(p.stdout, "  $ %s\n", e.Text)
-	case runner.Message:
-		fmt.Fprintln(p.stdout, ui.MessageText(e.Text, e.Color, terminalWriter(p.stdout)))
-	case runner.StepDone:
-		switch e.Status {
-		case runner.StatusPlanned, runner.StatusSkipped, runner.StatusBypassed:
-			if e.Reason != "" {
-				fmt.Fprintf(p.stdout, "  [%s] (%s) %s\n", e.Status, e.Reason, e.Text)
-			} else {
-				fmt.Fprintf(p.stdout, "  [%s] %s\n", e.Status, e.Text)
-			}
-		}
-	}
-}
-
-func terminalReader(r io.Reader) bool {
-	f, ok := r.(*os.File)
-	return ok && term.IsTerminal(int(f.Fd()))
-}
-
-func terminalWriter(w io.Writer) bool {
-	f, ok := w.(*os.File)
-	return ok && term.IsTerminal(int(f.Fd()))
 }
 
 // validateBypassTasks verifies that every --bypass argument matches a task name in plan.
@@ -339,4 +271,10 @@ func ExitCode(err error) int {
 		return exitErr.ExitCode()
 	}
 	return 1
+}
+
+// ErrorText returns err's message with terminal control sequences removed.
+// Errors can quote profile text, which must not be able to drive the terminal.
+func ErrorText(err error) string {
+	return ui.MessageText(err.Error(), "", false)
 }

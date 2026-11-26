@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"plonk/profile"
-	"plonk/runner"
+	"github.com/vanvanni/plonkr/profile"
+	"github.com/vanvanni/plonkr/runner"
 )
 
 func TestOpenValidation(t *testing.T) {
