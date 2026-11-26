@@ -76,8 +76,8 @@ The 13 guest scenario groups cover:
 - Repeat setup and a subsequent `git pull` as the application user.
 - Branch, tag and full commit repository references.
 - Exact private-key bytes, target ownership/mode, unchanged source, missing and
-  encrypted-key preflight, dry-run isolation, conflicting key preservation and
-  refusal of an incorrect repository host key.
+  encrypted-key preflight, dry-run isolation, declined/interactive/automatic key
+  replacement, and automatic acceptance of unknown or changed repository host keys.
 - Nested flags, configured/CLI bypass, dynamic help, unknown options, sanitized
   output, private logs and absence of private key material in logs.
 - Chained profiles/nested snippets, fail-fast exit codes and pending work.
@@ -102,3 +102,7 @@ and [remove a named instance](https://canonical.com/multipass/docs/latest/how-to
 guest, and Go 1.26.0 inside the guest. Website/native checks, Linux vet/race tests
 and all 13 guest scenario groups passed. Artifact collection and automatic VM
 removal were verified. A run launched from a Linux host remains to be performed.
+
+2026-11-27: re-verified after the canonical module-path update and SSH key-policy
+changes. All 13 groups and Linux race checks passed, including actual PTY yes/no
+approval, automatic key replacement and unknown/mismatched repository host keys.

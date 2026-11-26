@@ -223,9 +223,9 @@ tasks {
         text = text.replace("/home/operator/.ssh/your-repo", str(self.deploy))
         text = re.sub(r'known_hosts\s*=\s*\[[^\]]*\]', "known_hosts = [" + quote(self.known_host) + "]", text)
         self.write("app-example", text)
-        # The published example explicitly requires a writable parent. Provision
-        # it without pre-creating the app account that Plonkr must create itself.
-        self.shell("install -d -m 1777 /srv")
+        # /srv is root-owned and the app account is created by Plonkr itself, so the
+        # checkout directory must be prepared for it.
+        check(self.shell("stat -c %U /srv").stdout.strip() == "root", "Fixture expects a root-owned /srv")
         result = self.apply("app-example", "--vm", "--verbose")
         check("guest-agent-ready" in result.stdout and "Application setup complete" in result.stdout,
               "Enabled snippets or log message did not execute")
@@ -282,8 +282,12 @@ tasks {{
     def preflight_keys(self):
         encrypted = self.scratch / "encrypted"
         run("ssh-keygen", "-q", "-t", "ed25519", "-N", "fixture-passphrase", "-f", encrypted)
+        crlf = self.scratch / "crlf-key"
+        crlf.write_bytes(self.deploy.read_bytes().replace(b"\n", b"\r\n"))
+        crlf.chmod(0o600)
         for name, key, diagnostic in [("missing-key", self.scratch / "absent", "inspect key source"),
-                                      ("encrypted-key", encrypted, "passphrase-protected")]:
+                                      ("encrypted-key", encrypted, "passphrase-protected"),
+                                      ("crlf-key", crlf, "CRLF")]:
             marker = self.scratch / (name + "-executed")
             self.repository_profile(name, key=key, script_before=task("Before clone", ["touch " + str(marker)]))
             self.apply(name, "--dry-run")
@@ -300,17 +304,33 @@ tasks {{
         self.shell("printf existing-fixture > " + installed + "; chown app:app " + installed)
         before = self.shell("sha256sum " + installed).stdout.split()[0]
         result = self.apply(name, expected=1)
-        check("Different key file already exists" in result.stdout, "Key conflict was not reported")
+        check("Warning:" in result.stdout and "not approved" in result.stdout, "Key conflict was not reported")
         check(self.shell("sha256sum " + installed).stdout.split()[0] == before, "Conflicting key was overwritten")
-        self.shell("test ! -e /srv/conflict-fixture")
+        self.shell("test -z \"$(ls -A /srv/conflict-fixture 2>/dev/null)\"")  # nothing was cloned
+        code, output = self.terminal(name, ["--no-tui"], answer="no\n")
+        check(code == 1 and "declined" in output, "Declining replacement was not reported")
+        check(self.shell("sha256sum " + installed).stdout.split()[0] == before, "Declining changed the key")
+        code, output = self.terminal(name, ["--no-tui"], answer="yes\n")
+        check(code == 0 and "Replaced deploy key" in output, "Approved replacement was not performed: " + output[-2000:])
+        check(self.shell("sha256sum " + installed).stdout.split()[0] == self.source_digest, "Approved key bytes differ")
+        self.shell("printf another-fixture > " + installed)
+        result = self.apply(name, "--auto-approve")
+        check("Warning:" in result.stdout and "approved by --auto-approve" in result.stdout, "Automatic approval missed warning")
+        check(self.shell("sha256sum " + installed).stdout.split()[0] == self.source_digest, "Automatic replacement bytes differ")
         # Use an independent user/home so the known host from the successful
         # repository cannot satisfy this intentionally incorrect trust case.
         self.shell("useradd -m -s /bin/sh trustfixture; install -d -o trustfixture -g trustfixture /srv/trust-fixture")
         wrong = self.control.with_suffix(".pub").read_text().strip()
         path = self.repository_profile("trust-fixture", path="/srv/trust-fixture/repo", known="127.0.0.1 " + wrong)
         path.write_text(path.read_text().replace('user = "app"', 'user = "trustfixture"'))
-        result = self.apply("trust-fixture", expected=128)
-        check("Host key verification failed" in result.stdout, "Host trust failure not reported")
+        self.apply("trust-fixture")
+        self.shell("test -f /srv/trust-fixture/repo/README")
+        # No configured known_hosts entry must also work.
+        path = self.repository_profile("unknown-host-fixture", path="/srv/trust-fixture/unknown")
+        text = path.read_text().replace('user = "app"', 'user = "trustfixture"')
+        text = re.sub(r'known_hosts\s*=\s*\[[^\]]*\]', '', text)
+        path.write_text(text)
+        self.apply("unknown-host-fixture")
 
     def flags_bypass_and_logs(self):
         enabled = self.scratch / "enabled"
@@ -374,7 +394,7 @@ snippet "outer" {
         self.write("cycle-b", 'include = ["cycle-a"]\n')
         check("cycle" in self.cli("validate", "cycle-a", expected=1).stdout, "Include cycle accepted")
 
-    def terminal(self, name, flags=(), cancel=False):
+    def terminal(self, name, flags=(), cancel=False, answer=None):
         master, slave = pty.openpty()
         fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", 35, 110, 0, 0))
         process = subprocess.Popen([str(BINARY), "run", self.host, name, *flags],
@@ -397,6 +417,9 @@ snippet "outer" {
                     if not chunk:
                         break
                     data.extend(chunk)
+                    if answer is not None and not sent and b"Replace this key?" in data:
+                        os.write(master, answer.encode())
+                        sent = True
                 elif process.poll() is not None:
                     break
                 # A displayed command can contain CANCEL_READY before SSH starts.
@@ -454,7 +477,7 @@ def main():
             ("repeat application and independent git pull", suite.rerun_and_pull),
             ("commit and tag repository references", suite.repository_refs),
             ("missing/encrypted key preflight, preview and bypass", suite.preflight_keys),
-            ("key conflict preservation and strict repository host trust", suite.key_conflict_and_trust),
+            ("key replacement approval and automatic repository host acceptance", suite.key_conflict_and_trust),
             ("dynamic nested flags, both bypass forms, plain output and logs", suite.flags_bypass_and_logs),
             ("profile/snippet chaining and fail-fast result propagation", suite.chaining_and_failure),
             ("whole-plan validation before remote changes", suite.invalid_plan_prevents_changes),
