@@ -2,9 +2,20 @@
 
 | Branch | Purpose | Release tags |
 | --- | --- | --- |
-| `main` | Stable releases | `v0.1.0`, `v0.1.1`, etc. |
-| `prerelease` | Candidate builds; current v0.1.0 work | `v0.1.0-alpha.1`, `v0.1.0-beta.1`, `v0.1.0-rc.1` |
+| `main` | Stable releases | `v2026.11.0`, `v2026.11.1`, etc. |
+| `prerelease` | Candidate builds | `v2026.11.0-alpha.1`, `v2026.11.0-beta.1`, `v2026.11.0-rc.1` |
 | `develop` | Ongoing work; no releases | None |
+
+Plonkr uses **CalVer: `YYYY.MM.PATCH`**, with a four-digit year, a two-digit
+month (`01`–`12`), and a zero-based release counter for that month. The first
+release in November 2026 is `2026.11.0`; subsequent releases are `2026.11.1`,
+`2026.11.2`, etc. December starts at `2026.12.0`. Use the intended release month;
+if a candidate rolls into another month, start a new version and candidate counter.
+
+Candidates append `-alpha.N`, `-beta.N` or `-rc.N`. Tag names add a leading `v`;
+the CLI version omits it. Untagged development builds currently identify as
+`2026.11.0-dev`. These numbers express release dates and sequence, not semantic
+compatibility guarantees; document breaking changes in release notes.
 
 Use feature branches into `develop`, promote tested changes to `prerelease`,
 then promote a verified candidate to `main` for stable release. Use merges or
@@ -36,7 +47,7 @@ go test -tags multipass ./acceptance -v -count=1 -timeout 45m
 ```
 
 Create an annotated tag on the chosen commit after promotion, for example
-`git tag -a v0.1.0-alpha.1 -m "v0.1.0-alpha.1"` on `prerelease`.
+`git tag -a v2026.11.0-alpha.1 -m "v2026.11.0-alpha.1"` on `prerelease`.
 Push the branch before pushing the tag so remote ancestry checks can succeed.
 Do not tag `develop`; release checks reject its unpromoted commits.
 

@@ -7,7 +7,7 @@ import (
 )
 
 // Version identifies the plonk CLI build.
-var Version = "0.1.0-dev"
+var Version = "2026.11.0-dev"
 
 func newVersionCmd() *cobra.Command {
 	return &cobra.Command{

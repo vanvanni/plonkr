@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Guide — Plonkr</title>
-<meta name="description" content="Plonkr concepts, agreed configuration behavior and the path to v0.1.0.">
+<meta name="description" content="Plonkr concepts, agreed configuration behavior and the path to v2026.11.0.">
 <meta name="theme-color" content="#0D0E12">
 <link rel="canonical" href="https://plonkr.dev/guide/">
 <link rel="icon" href="../assets/favicon.ico" sizes="48x48">
@@ -35,10 +35,10 @@
 <a href="repositories.html">Repository SSH keys</a>
 <a href="execution.html">Execution and results</a>
 <a href="examples.html">Examples</a></nav></aside>
-<main class="article" id="main"><p class="kicker">docs / v0.1.0 in development</p><h1 id="overview">Machine setup with Plonkr</h1>
+<main class="article" id="main"><p class="kicker">docs / v2026.11.0 in development</p><h1 id="overview">Machine setup with Plonkr</h1>
 <p class="lead">Prepare a machine you already have, using a profile that describes its setup.</p><p><strong>Plonkr</strong> is the product; <code>plonk</code> is the command. The intended workflow covers existing containers, VMs and bare metal reached over SSH. Creating the machine stays with your existing tools.</p>
 <h2 id="status">Read this first</h2>
-<div class="notice"><p><strong>Pre-release documentation:</strong> the proof of concept has been reviewed, but there is no installable Plonkr release yet. These pages distinguish agreed v0.1.0 behavior from proposed syntax and capabilities seen in the prototype. Examples are design examples, not commands to run against a released binary.</p></div><p>The initial prototype implements ordered SSH execution, profile composition, conditional steps, account setup, repository cloning and systemd unit-file installation. That is implementation evidence, not a guarantee of supported platforms or reliable reruns in the prerelease.</p>
+<div class="notice"><p><strong>Pre-release documentation:</strong> the proof of concept has been reviewed, but there is no installable Plonkr release yet. These pages distinguish agreed v2026.11.0 behavior from proposed syntax and capabilities seen in the prototype. Examples are design examples, not commands to run against a released binary.</p></div><p>The initial prototype implements ordered SSH execution, profile composition, conditional steps, account setup, repository cloning and systemd unit-file installation. That is implementation evidence, not a guarantee of supported platforms or reliable reruns in the prerelease.</p>
 <h2 id="workflow">The workflow</h2>
 <ol><li>Create your target machine and establish SSH access.</li><li>Describe users, groups, repository access and setup work in a local profile.</li><li>Review the expanded plan before applying changes.</li><li>Run setup and inspect the results and log.</li></ol><p>The preview and execution workflow exists in the prototype. The final command grammar and platform support are still being agreed.</p>
 <h2 id="reading">Read the guide</h2>
@@ -47,7 +47,7 @@
 <p>No Plonkr download, package or install command is published yet. Installation instructions will accompany a verified prerelease. The prototype's installer and old executable name are not Plonkr installation instructions.</p>
 <h2 id="reference">Command reference</h2>
 <p>The executable name is <code>plonk</code>. Its subcommands and flags are not finalized. The landing-page terminal is illustrative; it is not a command reference.</p>
-<h2 id="release">Road to v0.1.0</h2>
+<h2 id="release">Road to v2026.11.0</h2>
 <p>The agreed priorities are cleaner configuration, reliable repository-key copying, relocation of profile storage and clearer execution results. The private-key store will be removed. Users and groups will support automatic creation with explicit opt-out.</p><p>Before release, the configuration grammar, supported systems, repeat-run behavior and bypass semantics need to be finalized and tested. A successful key copy alone is not evidence of a successful private repository clone.</p></main>
 <aside class="toc" aria-label="On this page"><h4>On this page</h4><nav><a href="#overview">Machine setup with Plonkr</a>
 <a href="#status">Read this first</a>
@@ -55,7 +55,7 @@
 <a href="#reading">Read the guide</a>
 <a href="#installation">Installation</a>
 <a href="#reference">Command reference</a>
-<a href="#release">Road to v0.1.0</a></nav></aside>
+<a href="#release">Road to v2026.11.0</a></nav></aside>
 </div></div>
 <footer class="site-footer">
   <div class="wrap">

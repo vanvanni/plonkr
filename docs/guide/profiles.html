@@ -35,14 +35,14 @@
 <a href="repositories.html">Repository SSH keys</a>
 <a href="execution.html">Execution and results</a>
 <a href="examples.html">Examples</a></nav></aside>
-<main class="article" id="main"><p class="kicker">docs / v0.1.0 in development</p><h1 id="overview">Profiles and locations</h1>
+<main class="article" id="main"><p class="kicker">docs / v2026.11.0 in development</p><h1 id="overview">Profiles and locations</h1>
 <p class="lead">Keep setup instructions on the machine where you run <code>plonk</code>.</p><p>A <strong>profile</strong> describes setup for a target. A <strong>snippet</strong> is reusable work included by a profile. A <strong>template</strong> supplies the content of a managed file such as a service unit. These concepts exist in the prototype; their final directory layout is still being defined.</p>
 <h2 id="windows">Windows profile location</h2>
 <p><strong>Agreed location:</strong> <code>%ProgramData%\plonkr\</code>. Resolve <code>%ProgramData%</code> on the controller rather than hard-coding a drive letter. This is machine-wide storage, not a separate directory for each Windows user.</p><p>The location has been selected for the new implementation; the prototype still uses its old Documents directory. Subdirectories for profiles, snippets and templates have not been finalized. Directory creation and editing permissions still need to be specified.</p>
 <h2 id="linux">Linux profile location</h2>
 <p><strong>Proposed:</strong> <code>/etc/plonkr/</code>. Moving away from Documents is agreed; this exact Linux path and the layout beneath it remain proposals. A machine-wide location makes profiles easy to find, while editing may require elevated permissions.</p>
 <h2 id="migration">Moving existing profiles</h2>
-<p>The new release will replace the prototype's Documents-based discovery. The migration procedure, explicit-directory override and lookup precedence remain to be defined. No automatic migration is implemented or promised yet.</p><p>Existing prototype profiles use a different schema from the proposed v0.1.0 examples. Moving a file alone will not make it compatible. Keep the original profile while adapting it to the final format.</p>
+<p>The new release will replace the prototype's Documents-based discovery. The migration procedure, explicit-directory override and lookup precedence remain to be defined. No automatic migration is implemented or promised yet.</p><p>Existing prototype profiles use a different schema from the proposed v2026.11.0 examples. Moving a file alone will not make it compatible. Keep the original profile while adapting it to the final format.</p>
 <h2 id="paths">Local paths and target paths</h2>
 <p>A repository key source is a path on the controller. The repository checkout path and the installed key path are on the target. A Windows controller may therefore reference a Windows key file while preparing a Linux target.</p><p>Private key material belongs in the source key file, not inside a profile. Native Windows source-path handling must be verified before the Windows workflow is documented as supported.</p></main>
 <aside class="toc" aria-label="On this page"><h4>On this page</h4><nav><a href="#overview">Profiles and locations</a>

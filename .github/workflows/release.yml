@@ -24,14 +24,15 @@ jobs:
         run: |
           set -euo pipefail
           number='(0|[1-9][0-9]*)'
-          if [[ "$TAG" =~ ^v${number}\.${number}\.${number}$ ]]; then
+          calendar='[1-9][0-9]{3}\.(0[1-9]|1[0-2])'
+          if [[ "$TAG" =~ ^v${calendar}\.${number}$ ]]; then
             branch=main
             echo 'prerelease=false' >> "$GITHUB_OUTPUT"
-          elif [[ "$TAG" =~ ^v${number}\.${number}\.${number}-(alpha|beta|rc)\.${number}$ ]]; then
+          elif [[ "$TAG" =~ ^v${calendar}\.${number}-(alpha|beta|rc)\.${number}$ ]]; then
             branch=prerelease
             echo 'prerelease=true' >> "$GITHUB_OUTPUT"
           else
-            echo 'Use vX.Y.Z or vX.Y.Z-alpha.N / beta.N / rc.N' >&2
+            echo 'Use vYYYY.MM.PATCH or vYYYY.MM.PATCH-alpha.N / beta.N / rc.N (month 01-12)' >&2
             exit 1
           fi
           git show-ref --verify "refs/remotes/origin/$branch"

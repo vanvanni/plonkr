@@ -160,7 +160,9 @@ class Suite:
             self.cli("validate", example, "--profiles-dir", ROOT / "examples")
             preview = self.cli("run", self.host, example, "--profiles-dir", ROOT / "examples", "--dry-run")
             check("planned" in preview.stdout, f"No planned steps in {example.name}")
-        check("0.1.0" in self.cli("version").stdout, "Version output missing version")
+        check(re.fullmatch(r"plonk [1-9][0-9]{3}\.(?:0[1-9]|1[0-2])\.(?:0|[1-9][0-9]*)(?:-(?:dev|(?:alpha|beta|rc)\.(?:0|[1-9][0-9]*)))?\s*",
+                           self.cli("version").stdout) is not None,
+              "Version output must use YYYY.MM.PATCH CalVer")
         self.cli("--help")
         self.cli("validate", "--help")
 

@@ -2,9 +2,9 @@
 
 Machine setup, with a little less ceremony.
 
-Plonkr is being built to automate repeat setup on existing LXC containers, VMs, and bare metal. The command is `plonk`. The repository root is the Go module for the v0.1.0-dev CLI. Disposable Ubuntu acceptance tests pass; release packaging remains pending, so there is no installable Plonkr release yet.
+Plonkr is being built to automate repeat setup on existing LXC containers, VMs, and bare metal. The command is `plonk`. The repository root is the Go module for the v2026.11.0-dev CLI. Disposable Ubuntu acceptance tests pass; release packaging remains pending, so there is no installable Plonkr release yet.
 
-The [public guide](docs/guide/index.html) covers profile locations, configuration and tasks, repository SSH keys, execution results and examples. It distinguishes agreed v0.1.0 behavior from proposed syntax and prototype capabilities while verification is completed.
+The [public guide](docs/guide/index.html) covers profile locations, configuration and tasks, repository SSH keys, execution results and examples. It distinguishes agreed v2026.11.0 behavior from proposed syntax and prototype capabilities while verification is completed.
 
 ## Layout
 
@@ -27,6 +27,7 @@ go test -count=1 ./...
 ```
 
 See [CLI usage](CLI.md) for commands and configuration.
+Releases use CalVer (`YYYY.MM.PATCH`), for example `2026.11.0` or `2026.11.0-rc.1`.
 For the optional full CLI and website check, see the [Multipass acceptance suite](acceptance/README.md).
 Run `go test -tags multipass ./acceptance -v -count=1 -timeout 45m` from this repository root
 on Windows or Linux with Multipass installed. It uses a disposable Ubuntu VM;
@@ -40,4 +41,4 @@ Push this directory as the repository root. Enable Settings → Pages → GitHub
 
 The workflow follows [GitHub's custom Pages workflow guidance](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages). With Actions deployment, configure the domain in repository settings; CNAME alone does not configure it.
 
-The Pegs branding direction is selected and the vector wordmark polish is complete. See [design files](docs/design/README.md) and [web implementation notes](docs/design/web-implementation.md). Runnable commands, platform support and installation instructions await implementation and verification; full v0.1.0 scope remains open. A licence has not yet been selected.
+The Pegs branding direction is selected and the vector wordmark polish is complete. See [design files](docs/design/README.md) and [web implementation notes](docs/design/web-implementation.md). Runnable commands, platform support and installation instructions await implementation and verification; full v2026.11.0 scope remains open. A licence has not yet been selected.
