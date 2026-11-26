@@ -125,4 +125,5 @@ Plonkr uses CalVer: `YYYY.MM.PATCH`, with candidate versions such as `2026.11.0-
 
 ## License
 
-A license has not yet been selected.
+Plonkr is free software, licensed under the [GNU General Public License v3.0](LICENSE) (`GPL-3.0-only`).
+You may use, study, change and share it; if you distribute a modified version, it must be under the same license with its source available.

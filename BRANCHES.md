@@ -69,4 +69,4 @@ CLI code on `prerelease`. See [Pages setup](PAGES.md) for this bootstrap.
 
 The current coverage record is in [the acceptance suite](acceptance/README.md).
 Linux arm64 is cross-built; it has not been exercised by that amd64 acceptance run.
-Licence selection and repository visibility remain open before public publication.
+The project is licensed under GPL-3.0-only; see [LICENSE](LICENSE).
