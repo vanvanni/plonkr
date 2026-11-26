@@ -144,6 +144,16 @@ These decisions are deliberate; keep them when extending the site.
 
 ## Verified and not verified
 
+### Beta status and preview-domain preparation
+
+The landing page now has a visible beta/no-stable-release notice and updated
+implementation status. The approved Pegs geometry, palette and wordmark are
+unchanged. A separate generated preview adds its own notice, noindex metadata,
+canonical URLs and `prerelease.plonkr.dev` CNAME. The preview deployment workflow
+requires a separately configured output-only Pages repository and token; neither
+DNS nor remote deployment has been performed. Static checks cover both build
+outputs; new browser/layout verification has not been performed for these notices.
+
 ### Public guide expansion, 2026-11-26
 
 The guide now has six static pages: overview, profile locations, configuration

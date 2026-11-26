@@ -14,7 +14,8 @@ if a candidate rolls into another month, start a new version and candidate count
 
 Candidates append `-alpha.N`, `-beta.N` or `-rc.N`. Tag names add a leading `v`;
 the CLI version omits it. Untagged development builds currently identify as
-`2026.11.0-dev`. These numbers express release dates and sequence, not semantic
+`2026.11.0-beta.1`. This is the beta being prepared; no tag or published release
+is implied by the source version. These numbers express release dates and sequence, not semantic
 compatibility guarantees; document breaking changes in release notes.
 
 Use feature branches into `develop`, promote tested changes to `prerelease`,
@@ -24,7 +25,9 @@ Ordinary branch pushes run checks; they do not create release tags or releases.
 
 The repository was bootstrapped with an empty initial commit on `main`, followed
 by the current implementation on `prerelease`. `develop` starts from that candidate.
-The empty `main` baseline is not a stable software release.
+The initial empty `main` baseline is not a stable software release. A separate
+website-only commit makes the beta-status site publishable from `main` before
+stable CLI code is promoted.
 
 ## Workflows
 
@@ -47,18 +50,23 @@ go test -tags multipass ./acceptance -v -count=1 -timeout 45m
 ```
 
 Create an annotated tag on the chosen commit after promotion, for example
-`git tag -a v2026.11.0-alpha.1 -m "v2026.11.0-alpha.1"` on `prerelease`.
+`git tag -a v2026.11.0-beta.1 -m "v2026.11.0-beta.1"` on `prerelease`.
 Push the branch before pushing the tag so remote ancestry checks can succeed.
 Do not tag `develop`; release checks reject its unpromoted commits.
 
 ## GitHub setup still required
 
-No remote is configured yet; workflows cannot run on GitHub until the repository
-is hosted. Set the default branch to `develop` while development continues. Protect
+The remote is `https://github.com/vanvanni/plonkr.git`; local commits have not
+been pushed by this setup. Set the default branch to `develop` while development continues. Protect
 all three branches against force pushes/deletion and require PR review and the
 Checks jobs before merging. Restrict version-tag creation to maintainers. Configure
 Pages and the `github-pages` environment for `main` only. Repository settings,
 branch protections and release publication are separate from these workflow files.
+
+The main domain can explain the beta before a stable CLI is released. Promote
+only website files and its workflow to `main` for that purpose, keeping unfinished
+CLI code on `prerelease`. See [Pages setup](PAGES.md) for this bootstrap and the
+independent prerelease site.
 
 The current coverage record is in [the acceptance suite](acceptance/README.md).
 Linux arm64 is cross-built; it has not been exercised by that amd64 acceptance run.

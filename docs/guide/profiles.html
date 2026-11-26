@@ -35,7 +35,7 @@
 <a href="repositories.html">Repository SSH keys</a>
 <a href="execution.html">Execution and results</a>
 <a href="examples.html">Examples</a></nav></aside>
-<main class="article" id="main"><p class="kicker">docs / v2026.11.0 in development</p><h1 id="overview">Profiles and locations</h1>
+<main class="article" id="main"><p class="kicker">docs / beta — no stable release yet</p><h1 id="overview">Profiles and locations</h1>
 <p class="lead">Keep setup instructions on the machine where you run <code>plonk</code>.</p><p>A <strong>profile</strong> describes setup for a target. A <strong>snippet</strong> is reusable work included by a profile. A <strong>template</strong> supplies the content of a managed file such as a service unit. These concepts exist in the prototype; their final directory layout is still being defined.</p>
 <h2 id="windows">Windows profile location</h2>
 <p><strong>Agreed location:</strong> <code>%ProgramData%\plonkr\</code>. Resolve <code>%ProgramData%</code> on the controller rather than hard-coding a drive letter. This is machine-wide storage, not a separate directory for each Windows user.</p><p>The location has been selected for the new implementation; the prototype still uses its old Documents directory. Subdirectories for profiles, snippets and templates have not been finalized. Directory creation and editing permissions still need to be specified.</p>

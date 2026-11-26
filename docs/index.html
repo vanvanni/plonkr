@@ -42,6 +42,7 @@
   <section class="hero" aria-labelledby="hero-title">
     <div class="wrap">
       <div class="copy">
+        <div class="notice" role="note"><p><strong>Beta software — no stable release yet.</strong> Plonkr is being tested ahead of its first stable release. <a href="guide/index.html#status">Read the current status</a>.</p></div>
         <p class="dict"><b>plonk</b> <i>v.</i> to set something down firmly, where you want it.</p>
         <h1 id="hero-title">Make every new machine <span class="scribble">yours.<svg viewBox="0 0 300 12" preserveAspectRatio="none" aria-hidden="true"><path d="M2 8C34 3 72 10 118 6S196 3 244 7 288 5 298 4"/></svg></span></h1>
         <p class="lead">You’ve made the container. Now comes the bit where you type what you typed last time. Plonkr is a CLI for configuring machines that already exist, over SSH, so you can skip that part.</p>
@@ -94,7 +95,7 @@
             <p class="aside" aria-hidden="true"><svg viewBox="0 0 44 18"><path d="M42 9C32 5 18 4 4 9M4 9l8-6M4 9l8 5"/></svg><span>still deciding this bit</span></p>
             <button class="replay" type="button" id="replay" aria-label="Replay the example">↻ replay</button>
           </div>
-          <div class="window-foot">Made-up hostnames and output. Real commands come with the proof of concept.</div>
+          <div class="window-foot">Illustrative hostnames and output. See the guide for implementation status.</div>
         </div>
       </div>
     </div>
@@ -196,12 +197,12 @@
   <section class="section" id="status" aria-labelledby="status-title">
     <div class="wrap">
       <h2 id="status-title">Where it’s at.</h2>
-      <p class="sub">Branding first, then the proof of concept, then a v0.1.0 pre-release.</p>
+      <p class="sub">The core setup workflow is implemented and tested. Plonkr is in beta; stable release readiness is still being verified.</p>
       <ol class="log">
         <li><span class="state done">Settled</span><div><h3>Name and command</h3><p>The project is Plonkr. You type <code>plonk</code>.</p></div></li>
-        <li><span class="state now">In review</span><div><h3>Look and feel</h3><p>The mark, the violet and graphite palette, and this site.</p></div></li>
-        <li><span class="state">Up next</span><div><h3>Proof of concept</h3><p>Import it, read it properly, decide what the first release includes.</p></div></li>
-        <li><span class="state">Later</span><div><h3>v0.1.0 pre-release</h3><p>Shipped alongside installation and command docs that have been checked against it.</p></div></li>
+        <li><span class="state done">Approved</span><div><h3>Look and feel</h3><p>The mark, the violet and graphite palette, and this site.</p></div></li>
+        <li><span class="state done">Tested</span><div><h3>Core implementation</h3><p>Configuration, SSH setup and repository keys are covered by disposable Ubuntu acceptance tests.</p></div></li>
+        <li><span class="state now">Beta</span><div><h3>2026.11.0-beta.1</h3><p>Platform checks, release packaging and final documentation are being prepared. No stable release is available yet.</p></div></li>
       </ol>
     </div>
   </section>
@@ -211,10 +212,10 @@
       <div class="cta-mark" aria-hidden="true"><svg class="mark" width="112" height="112" viewBox="0 0 16 16" aria-hidden="true"><circle class="peg" cx="4" cy="4" r="3"/><circle class="peg" cx="4" cy="12" r="3"/><circle class="peg" cx="12" cy="12" r="3"/><circle class="socket" cx="12" cy="4" r="2.25" fill="none" stroke-width="1.5"/><circle class="demo" cx="12" cy="4" r="3"/></svg></div>
       <div>
         <h2 id="cta-title">Your next machine starts here.</h2>
-        <p>Follow Plonkr from its first public shape to v0.1.0.</p>
+        <p>Follow Plonkr from its first public shape to the first stable release.</p>
         <div class="hero-actions">
           <a class="btn btn-primary" href="guide/index.html">Read the project guide <span class="arrow" aria-hidden="true">→</span></a>
-          <a class="textlink" href="guide/index.html#release">Road to v0.1.0</a>
+          <a class="textlink" href="guide/index.html#release">Road to the first stable release</a>
         </div>
       </div>
     </div>
@@ -235,7 +236,7 @@
       </div>
       <div class="foot-col">
         <h4>Docs</h4>
-        <ul><li><a href="guide/index.html">Project guide</a></li><li><a href="guide/index.html#installation">Installation</a></li><li><a href="guide/index.html#reference">Command reference</a></li><li><a href="guide/index.html#release">Road to v0.1.0</a></li></ul>
+        <ul><li><a href="guide/index.html">Project guide</a></li><li><a href="guide/index.html#installation">Installation</a></li><li><a href="guide/index.html#reference">Command reference</a></li><li><a href="guide/index.html#release">Road to the first stable release</a></li></ul>
       </div>
       <div class="foot-col">
         <h4>Names</h4>
@@ -244,7 +245,7 @@
     </div>
     <div class="foot-base">
       <span>© Plonkr. Work in progress.</span>
-      <span>Everything here is a proposal until the proof of concept has been reviewed.</span>
+      <span>Beta software. No stable release yet.</span>
     </div>
   </div>
 </footer>

@@ -35,7 +35,7 @@
 <a href="repositories.html" aria-current="page">Repository SSH keys</a>
 <a href="execution.html">Execution and results</a>
 <a href="examples.html">Examples</a></nav></aside>
-<main class="article" id="main"><p class="kicker">docs / v2026.11.0 in development</p><h1 id="overview">Repository SSH keys</h1>
+<main class="article" id="main"><p class="kicker">docs / beta — no stable release yet</p><h1 id="overview">Repository SSH keys</h1>
 <p class="lead">Use the key file you already have to give the target access to a repository.</p><p><strong>Agreed for v2026.11.0:</strong> the repository refers to a key file on the machine running <code>plonk</code>. Plonkr copies that file byte-for-byte to the selected target user's <code>.ssh/</code>. It preserves the local source and does not generate a key, decrypt it or re-encode it.</p>
 <h2 id="destination">Destination and identity</h2>
 <p>The key goes directly into the target user's <code>.ssh/</code>, without an application subdirectory. A clearly named file such as <code>~/.ssh/plonkr-your-repo.key</code> is a naming proposal, not a fixed destination contract yet. The final filename, collision handling and replacement policy remain open.</p><p>The private-key store and stored-key identifiers will be removed from the new interface. Specify a local file path instead of importing a key into Plonkr.</p>

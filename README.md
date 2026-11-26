@@ -2,7 +2,7 @@
 
 Machine setup, with a little less ceremony.
 
-Plonkr is being built to automate repeat setup on existing LXC containers, VMs, and bare metal. The command is `plonk`. The repository root is the Go module for the v2026.11.0-dev CLI. Disposable Ubuntu acceptance tests pass; release packaging remains pending, so there is no installable Plonkr release yet.
+Plonkr is being built to automate repeat setup on existing LXC containers, VMs, and bare metal. The command is `plonk`. The repository root is the Go module for the v2026.11.0-beta.1 CLI. Disposable Ubuntu acceptance tests pass; release packaging remains pending, so there is no installable Plonkr release yet.
 
 The [public guide](docs/guide/index.html) covers profile locations, configuration and tasks, repository SSH keys, execution results and examples. It distinguishes agreed v2026.11.0 behavior from proposed syntax and prototype capabilities while verification is completed.
 
@@ -34,6 +34,9 @@ on Windows or Linux with Multipass installed. It uses a disposable Ubuntu VM;
 ordinary Go tests stay fast and do not start VMs.
 
 ## GitHub Pages
+
+See [domain and preview-site setup](PAGES.md) for `plonkr.dev` and
+`prerelease.plonkr.dev`, including DNS records and repository settings.
 
 Branch roles, checks and release tagging are described in [Branches and releases](BRANCHES.md).
 

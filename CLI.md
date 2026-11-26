@@ -1,4 +1,4 @@
-# Plonkr CLI (`plonk`) — v2026.11.0-dev
+# Plonkr CLI (`plonk`) — v2026.11.0-beta.1
 
 The `plonkr/` repository root implements the initial v2026.11.0 development CLI for **Plonkr** (`plonk`) in Go (`go 1.26.0` module floor).
 
