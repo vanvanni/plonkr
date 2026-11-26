@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Guide — Plonkr</title>
+<meta name="description" content="Plonkr concepts, agreed configuration behavior and the path to v0.1.0.">
+<meta name="theme-color" content="#0D0E12">
+<link rel="canonical" href="https://plonkr.dev/guide/">
+<link rel="icon" href="../assets/favicon.ico" sizes="48x48">
+<link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
+<link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
+<link rel="manifest" href="../assets/site.webmanifest">
+<link rel="stylesheet" href="../assets/site.css">
+<script src="../assets/site.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap bar">
+    <a class="logo" href="../index.html" aria-label="Plonkr home"><svg class="lockup" width="105" height="32" viewBox="0 0 105 32" role="img" aria-label="Plonkr"><circle class="peg" cx="8" cy="8" r="6"/><circle class="peg" cx="8" cy="24" r="6"/><circle class="peg" cx="24" cy="24" r="6"/><circle class="socket" cx="24" cy="8" r="4.5" fill="none" stroke-width="3"/><circle class="demo" cx="24" cy="8" r="6"/><path class="wm" d="M38 11H41V26H38ZM38 16.5A5.5 5.5 0 1 1 49 16.5A5.5 5.5 0 1 1 38 16.5ZM41 16.5A2.5 2.5 0 1 0 46 16.5A2.5 2.5 0 1 0 41 16.5ZM52 7H55V22H52ZM71 11H74V22H71ZM71 16A5 5 0 0 1 81 16V22H78V16A2 2 0 0 0 74 16ZM85 7H88V14L91 11H95.24L90.26 15.98L95.5 22H91.3L88 18.2V22H85ZM97 11H100V22H97ZM97 16A5 5 0 0 1 102 11H105V14H102A2 2 0 0 0 100 16Z"/><path class="wm-o" d="M58 17A5 5 0 1 1 68 17A5 5 0 1 1 58 17Z"/></svg></a>
+    <button class="menu-btn" type="button" aria-expanded="false" aria-controls="site-nav"><i aria-hidden="true"></i>Menu</button>
+    <nav class="nav" id="site-nav" aria-label="Main navigation">
+      <a href="../index.html#compare">The problem</a>
+      <a href="../index.html#how">How it goes</a>
+      <a href="../index.html#status">Status</a>
+      <a href="index.html" aria-current="page">Docs</a>
+    </nav>
+  </div>
+</header>
+<div class="wrap"><div class="docs-layout">
+<aside class="sidebar" aria-label="Documentation"><h4>Documentation</h4><nav><a href="index.html" aria-current="page">Guide</a>
+<a href="profiles.html">Profiles and locations</a>
+<a href="configuration.html">Configuration and tasks</a>
+<a href="repositories.html">Repository SSH keys</a>
+<a href="execution.html">Execution and results</a>
+<a href="examples.html">Examples</a></nav></aside>
+<main class="article" id="main"><p class="kicker">docs / v0.1.0 in development</p><h1 id="overview">Machine setup with Plonkr</h1>
+<p class="lead">Prepare a machine you already have, using a profile that describes its setup.</p><p><strong>Plonkr</strong> is the product; <code>plonk</code> is the command. The intended workflow covers existing containers, VMs and bare metal reached over SSH. Creating the machine stays with your existing tools.</p>
+<h2 id="status">Read this first</h2>
+<div class="notice"><p><strong>Pre-release documentation:</strong> the proof of concept has been reviewed, but there is no installable Plonkr release yet. These pages distinguish agreed v0.1.0 behavior from proposed syntax and capabilities seen in the prototype. Examples are design examples, not commands to run against a released binary.</p></div><p>The initial prototype implements ordered SSH execution, profile composition, conditional steps, account setup, repository cloning and systemd unit-file installation. That is implementation evidence, not a guarantee of supported platforms or reliable reruns in the prerelease.</p>
+<h2 id="workflow">The workflow</h2>
+<ol><li>Create your target machine and establish SSH access.</li><li>Describe users, groups, repository access and setup work in a local profile.</li><li>Review the expanded plan before applying changes.</li><li>Run setup and inspect the results and log.</li></ol><p>The preview and execution workflow exists in the prototype. The final command grammar and platform support are still being agreed.</p>
+<h2 id="reading">Read the guide</h2>
+<ul><li><a href="profiles.html">Profiles and locations</a>: where profiles belong and how the storage change affects existing users.</li><li><a href="configuration.html">Configuration and tasks</a>: automatic user/group creation, explicit setup and proposed task structure.</li><li><a href="repositories.html">Repository SSH keys</a>: unchanged key copying and target-user access.</li><li><a href="execution.html">Execution and results</a>: previews, failure behavior and limits.</li><li><a href="examples.html">Examples</a>: a proposed profile and explanations.</li></ul>
+<h2 id="installation">Installation</h2>
+<p>No Plonkr download, package or install command is published yet. Installation instructions will accompany a verified prerelease. The prototype's installer and old executable name are not Plonkr installation instructions.</p>
+<h2 id="reference">Command reference</h2>
+<p>The executable name is <code>plonk</code>. Its subcommands and flags are not finalized. The landing-page terminal is illustrative; it is not a command reference.</p>
+<h2 id="release">Road to v0.1.0</h2>
+<p>The agreed priorities are cleaner configuration, reliable repository-key copying, relocation of profile storage and clearer execution results. The private-key store will be removed. Users and groups will support automatic creation with explicit opt-out.</p><p>Before release, the configuration grammar, supported systems, repeat-run behavior and bypass semantics need to be finalized and tested. A successful key copy alone is not evidence of a successful private repository clone.</p></main>
+<aside class="toc" aria-label="On this page"><h4>On this page</h4><nav><a href="#overview">Machine setup with Plonkr</a>
+<a href="#status">Read this first</a>
+<a href="#workflow">The workflow</a>
+<a href="#reading">Read the guide</a>
+<a href="#installation">Installation</a>
+<a href="#reference">Command reference</a>
+<a href="#release">Road to v0.1.0</a></nav></aside>
+</div></div>
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="foot-base" style="margin-top:0;border-top:0;padding-top:0">
+      <span>plonkr · documentation</span>
+      <span>Pre-release docs · plonkr.dev</span>
+    </div>
+  </div>
+</footer>
+</body>
+</html>

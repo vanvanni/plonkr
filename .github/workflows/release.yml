@@ -1,0 +1,101 @@
+name: Release draft
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: read
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  policy:
+    runs-on: ubuntu-24.04
+    outputs:
+      prerelease: ${{ steps.policy.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - id: policy
+        shell: bash
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          number='(0|[1-9][0-9]*)'
+          if [[ "$TAG" =~ ^v${number}\.${number}\.${number}$ ]]; then
+            branch=main
+            echo 'prerelease=false' >> "$GITHUB_OUTPUT"
+          elif [[ "$TAG" =~ ^v${number}\.${number}\.${number}-(alpha|beta|rc)\.${number}$ ]]; then
+            branch=prerelease
+            echo 'prerelease=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'Use vX.Y.Z or vX.Y.Z-alpha.N / beta.N / rc.N' >&2
+            exit 1
+          fi
+          git show-ref --verify "refs/remotes/origin/$branch"
+          git merge-base --is-ancestor HEAD "refs/remotes/origin/$branch"
+  checks:
+    needs: policy
+    uses: ./.github/workflows/checks.yml
+  package:
+    needs: [policy, checks]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - name: Build archives and checksums
+        shell: bash
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          mkdir -p release
+          for target in linux/amd64 linux/arm64 windows/amd64; do
+            export GOOS=${target%/*} GOARCH=${target#*/} CGO_ENABLED=0
+            name="plonk_${TAG}_${GOOS}_${GOARCH}"
+            stage=$(mktemp -d)
+            binary=plonk
+            if [[ "$GOOS" == windows ]]; then binary=plonk.exe; fi
+            go build -trimpath -ldflags "-s -w -X plonk/cmd.Version=${TAG#v}" -o "$stage/$binary" .
+            cp CLI.md "$stage/"
+            cp -R examples "$stage/"
+            if [[ "$GOOS" == windows ]]; then
+              (cd "$stage" && zip -qr "$GITHUB_WORKSPACE/release/$name.zip" .)
+            else
+              tar -czf "release/$name.tar.gz" -C "$stage" .
+            fi
+          done
+          (cd release && sha256sum *.tar.gz *.zip > SHA256SUMS)
+      - uses: actions/upload-artifact@v6
+        with:
+          name: release-packages
+          path: release/
+          if-no-files-found: error
+  draft:
+    needs: [policy, package]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v6
+        with:
+          name: release-packages
+          path: release
+      - name: Create draft release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+          PRERELEASE: ${{ needs.policy.outputs.prerelease }}
+        run: |
+          set -euo pipefail
+          args=(--draft --verify-tag --title "$TAG" --generate-notes)
+          if [[ "$PRERELEASE" == true ]]; then args+=(--prerelease); fi
+          gh release create "$TAG" "${args[@]}" release/*

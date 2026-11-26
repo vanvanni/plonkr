@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Profiles and locations — Plonkr</title>
+<meta name="description" content="Plonkr profile storage on Windows and the proposed Linux layout.">
+<meta name="theme-color" content="#0D0E12">
+<link rel="canonical" href="https://plonkr.dev/guide/profiles.html">
+<link rel="icon" href="../assets/favicon.ico" sizes="48x48">
+<link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
+<link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
+<link rel="manifest" href="../assets/site.webmanifest">
+<link rel="stylesheet" href="../assets/site.css">
+<script src="../assets/site.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap bar">
+    <a class="logo" href="../index.html" aria-label="Plonkr home"><svg class="lockup" width="105" height="32" viewBox="0 0 105 32" role="img" aria-label="Plonkr"><circle class="peg" cx="8" cy="8" r="6"/><circle class="peg" cx="8" cy="24" r="6"/><circle class="peg" cx="24" cy="24" r="6"/><circle class="socket" cx="24" cy="8" r="4.5" fill="none" stroke-width="3"/><circle class="demo" cx="24" cy="8" r="6"/><path class="wm" d="M38 11H41V26H38ZM38 16.5A5.5 5.5 0 1 1 49 16.5A5.5 5.5 0 1 1 38 16.5ZM41 16.5A2.5 2.5 0 1 0 46 16.5A2.5 2.5 0 1 0 41 16.5ZM52 7H55V22H52ZM71 11H74V22H71ZM71 16A5 5 0 0 1 81 16V22H78V16A2 2 0 0 0 74 16ZM85 7H88V14L91 11H95.24L90.26 15.98L95.5 22H91.3L88 18.2V22H85ZM97 11H100V22H97ZM97 16A5 5 0 0 1 102 11H105V14H102A2 2 0 0 0 100 16Z"/><path class="wm-o" d="M58 17A5 5 0 1 1 68 17A5 5 0 1 1 58 17Z"/></svg></a>
+    <button class="menu-btn" type="button" aria-expanded="false" aria-controls="site-nav"><i aria-hidden="true"></i>Menu</button>
+    <nav class="nav" id="site-nav" aria-label="Main navigation">
+      <a href="../index.html#compare">The problem</a>
+      <a href="../index.html#how">How it goes</a>
+      <a href="../index.html#status">Status</a>
+      <a href="index.html" aria-current="page">Docs</a>
+    </nav>
+  </div>
+</header>
+<div class="wrap"><div class="docs-layout">
+<aside class="sidebar" aria-label="Documentation"><h4>Documentation</h4><nav><a href="index.html">Guide</a>
+<a href="profiles.html" aria-current="page">Profiles and locations</a>
+<a href="configuration.html">Configuration and tasks</a>
+<a href="repositories.html">Repository SSH keys</a>
+<a href="execution.html">Execution and results</a>
+<a href="examples.html">Examples</a></nav></aside>
+<main class="article" id="main"><p class="kicker">docs / v0.1.0 in development</p><h1 id="overview">Profiles and locations</h1>
+<p class="lead">Keep setup instructions on the machine where you run <code>plonk</code>.</p><p>A <strong>profile</strong> describes setup for a target. A <strong>snippet</strong> is reusable work included by a profile. A <strong>template</strong> supplies the content of a managed file such as a service unit. These concepts exist in the prototype; their final directory layout is still being defined.</p>
+<h2 id="windows">Windows profile location</h2>
+<p><strong>Agreed location:</strong> <code>%ProgramData%\plonkr\</code>. Resolve <code>%ProgramData%</code> on the controller rather than hard-coding a drive letter. This is machine-wide storage, not a separate directory for each Windows user.</p><p>The location has been selected for the new implementation; the prototype still uses its old Documents directory. Subdirectories for profiles, snippets and templates have not been finalized. Directory creation and editing permissions still need to be specified.</p>
+<h2 id="linux">Linux profile location</h2>
+<p><strong>Proposed:</strong> <code>/etc/plonkr/</code>. Moving away from Documents is agreed; this exact Linux path and the layout beneath it remain proposals. A machine-wide location makes profiles easy to find, while editing may require elevated permissions.</p>
+<h2 id="migration">Moving existing profiles</h2>
+<p>The new release will replace the prototype's Documents-based discovery. The migration procedure, explicit-directory override and lookup precedence remain to be defined. No automatic migration is implemented or promised yet.</p><p>Existing prototype profiles use a different schema from the proposed v0.1.0 examples. Moving a file alone will not make it compatible. Keep the original profile while adapting it to the final format.</p>
+<h2 id="paths">Local paths and target paths</h2>
+<p>A repository key source is a path on the controller. The repository checkout path and the installed key path are on the target. A Windows controller may therefore reference a Windows key file while preparing a Linux target.</p><p>Private key material belongs in the source key file, not inside a profile. Native Windows source-path handling must be verified before the Windows workflow is documented as supported.</p></main>
+<aside class="toc" aria-label="On this page"><h4>On this page</h4><nav><a href="#overview">Profiles and locations</a>
+<a href="#windows">Windows profile location</a>
+<a href="#linux">Linux profile location</a>
+<a href="#migration">Moving existing profiles</a>
+<a href="#paths">Local paths and target paths</a></nav></aside>
+</div></div>
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="foot-base" style="margin-top:0;border-top:0;padding-top:0">
+      <span>plonkr · documentation</span>
+      <span>Pre-release docs · plonkr.dev</span>
+    </div>
+  </div>
+</footer>
+</body>
+</html>

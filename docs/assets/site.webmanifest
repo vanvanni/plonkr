@@ -1,0 +1,21 @@
+{
+  "name": "Plonkr",
+  "short_name": "Plonkr",
+  "description": "Configure existing machines over SSH. In development.",
+  "start_url": "/",
+  "display": "browser",
+  "background_color": "#0D0E12",
+  "theme_color": "#0D0E12",
+  "icons": [
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "mark.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

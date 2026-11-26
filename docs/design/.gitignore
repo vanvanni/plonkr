@@ -1,0 +1,4 @@
+# Generated Figcraft requests contain local paths.
+identity-commands.json
+identity-nodes.json
+identity-run.log

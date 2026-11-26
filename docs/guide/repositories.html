@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Repository SSH keys — Plonkr</title>
+<meta name="description" content="The agreed direct-file key contract for Plonkr repository setup.">
+<meta name="theme-color" content="#0D0E12">
+<link rel="canonical" href="https://plonkr.dev/guide/repositories.html">
+<link rel="icon" href="../assets/favicon.ico" sizes="48x48">
+<link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
+<link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
+<link rel="manifest" href="../assets/site.webmanifest">
+<link rel="stylesheet" href="../assets/site.css">
+<script src="../assets/site.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap bar">
+    <a class="logo" href="../index.html" aria-label="Plonkr home"><svg class="lockup" width="105" height="32" viewBox="0 0 105 32" role="img" aria-label="Plonkr"><circle class="peg" cx="8" cy="8" r="6"/><circle class="peg" cx="8" cy="24" r="6"/><circle class="peg" cx="24" cy="24" r="6"/><circle class="socket" cx="24" cy="8" r="4.5" fill="none" stroke-width="3"/><circle class="demo" cx="24" cy="8" r="6"/><path class="wm" d="M38 11H41V26H38ZM38 16.5A5.5 5.5 0 1 1 49 16.5A5.5 5.5 0 1 1 38 16.5ZM41 16.5A2.5 2.5 0 1 0 46 16.5A2.5 2.5 0 1 0 41 16.5ZM52 7H55V22H52ZM71 11H74V22H71ZM71 16A5 5 0 0 1 81 16V22H78V16A2 2 0 0 0 74 16ZM85 7H88V14L91 11H95.24L90.26 15.98L95.5 22H91.3L88 18.2V22H85ZM97 11H100V22H97ZM97 16A5 5 0 0 1 102 11H105V14H102A2 2 0 0 0 100 16Z"/><path class="wm-o" d="M58 17A5 5 0 1 1 68 17A5 5 0 1 1 58 17Z"/></svg></a>
+    <button class="menu-btn" type="button" aria-expanded="false" aria-controls="site-nav"><i aria-hidden="true"></i>Menu</button>
+    <nav class="nav" id="site-nav" aria-label="Main navigation">
+      <a href="../index.html#compare">The problem</a>
+      <a href="../index.html#how">How it goes</a>
+      <a href="../index.html#status">Status</a>
+      <a href="index.html" aria-current="page">Docs</a>
+    </nav>
+  </div>
+</header>
+<div class="wrap"><div class="docs-layout">
+<aside class="sidebar" aria-label="Documentation"><h4>Documentation</h4><nav><a href="index.html">Guide</a>
+<a href="profiles.html">Profiles and locations</a>
+<a href="configuration.html">Configuration and tasks</a>
+<a href="repositories.html" aria-current="page">Repository SSH keys</a>
+<a href="execution.html">Execution and results</a>
+<a href="examples.html">Examples</a></nav></aside>
+<main class="article" id="main"><p class="kicker">docs / v0.1.0 in development</p><h1 id="overview">Repository SSH keys</h1>
+<p class="lead">Use the key file you already have to give the target access to a repository.</p><p><strong>Agreed for v0.1.0:</strong> the repository refers to a key file on the machine running <code>plonk</code>. Plonkr copies that file byte-for-byte to the selected target user's <code>.ssh/</code>. It preserves the local source and does not generate a key, decrypt it or re-encode it.</p>
+<h2 id="destination">Destination and identity</h2>
+<p>The key goes directly into the target user's <code>.ssh/</code>, without an application subdirectory. A clearly named file such as <code>~/.ssh/plonkr-your-repo.key</code> is a naming proposal, not a fixed destination contract yet. The final filename, collision handling and replacement policy remain open.</p><p>The private-key store and stored-key identifiers will be removed from the new interface. Specify a local file path instead of importing a key into Plonkr.</p>
+<h2 id="declaration">Repository declaration</h2>
+<pre><code>repository "your-repo" {
+  url  = "git@example.com:team/your-repo.git"
+  path = "/srv/your-repo"
+  user = "app"
+  key  = "/home/operator/.ssh/your-repo"
+  ref  = "main"
+}</code></pre><p><strong>Proposed HCL example:</strong> <code>key</code> is local to the controller; <code>path</code> and <code>user</code> describe the target. The example hostname is a placeholder. A proposed setup operation <code>repo("your-repo")</code> would perform repository setup.</p><p>For a Windows controller, a candidate HCL source path is <code>key = "C:/Users/operator/.ssh/your-repo"</code>. This is a design example; native Windows path support is not verified.</p>
+<h2 id="access">What a successful clone requires</h2>
+<ul><li>The repository provider must authorize the matching public key.</li><li>The target user must exist and have permission to create the checkout.</li><li>Git and OpenSSH must be available on the target.</li><li>The target must trust the repository server's SSH host key.</li><li>An encrypted private key must be usable by SSH when Git authenticates.</li></ul><p>Connecting from your controller to the target and connecting from the target to the repository are separate SSH connections. Copying a repository key does not grant repository permissions or establish host trust.</p>
+<h2 id="encryption">Encrypted files</h2>
+<p>An encrypted key remains encrypted after copying. Removing the store does not remove the need to unlock that key for authentication. How encrypted keys are unlocked, and whether unattended encrypted-key use is supported in v0.1.0, remain open.</p>
+<h2 id="prototype">What the prototype establishes</h2>
+<p>The prototype has a direct-file transfer path with SHA-256 verification, private file permissions and strict repository host-key checking. It also has a legacy store path that transforms the file. The new contract keeps unchanged copying and removes the store and application key subdirectory.</p><p>Existing checkout directories currently fail in the prototype. Verification of an existing checkout, updates, key replacement and recovery after a failed clone still require defined behavior and tests.</p></main>
+<aside class="toc" aria-label="On this page"><h4>On this page</h4><nav><a href="#overview">Repository SSH keys</a>
+<a href="#destination">Destination and identity</a>
+<a href="#declaration">Repository declaration</a>
+<a href="#access">What a successful clone requires</a>
+<a href="#encryption">Encrypted files</a>
+<a href="#prototype">What the prototype establishes</a></nav></aside>
+</div></div>
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="foot-base" style="margin-top:0;border-top:0;padding-top:0">
+      <span>plonkr · documentation</span>
+      <span>Pre-release docs · plonkr.dev</span>
+    </div>
+  </div>
+</footer>
+</body>
+</html>

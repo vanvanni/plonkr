@@ -1,0 +1,14 @@
+[Unit]
+Description=Example Plonkr Service
+After=network.target
+
+[Service]
+Type=simple
+User=${user}
+Group=${group}
+WorkingDirectory=${working_dir}
+ExecStart=${exec_start}
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Configuration and tasks — Plonkr</title>
+<meta name="description" content="Automatic user and group creation and the proposed Plonkr task model.">
+<meta name="theme-color" content="#0D0E12">
+<link rel="canonical" href="https://plonkr.dev/guide/configuration.html">
+<link rel="icon" href="../assets/favicon.ico" sizes="48x48">
+<link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
+<link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
+<link rel="manifest" href="../assets/site.webmanifest">
+<link rel="stylesheet" href="../assets/site.css">
+<script src="../assets/site.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap bar">
+    <a class="logo" href="../index.html" aria-label="Plonkr home"><svg class="lockup" width="105" height="32" viewBox="0 0 105 32" role="img" aria-label="Plonkr"><circle class="peg" cx="8" cy="8" r="6"/><circle class="peg" cx="8" cy="24" r="6"/><circle class="peg" cx="24" cy="24" r="6"/><circle class="socket" cx="24" cy="8" r="4.5" fill="none" stroke-width="3"/><circle class="demo" cx="24" cy="8" r="6"/><path class="wm" d="M38 11H41V26H38ZM38 16.5A5.5 5.5 0 1 1 49 16.5A5.5 5.5 0 1 1 38 16.5ZM41 16.5A2.5 2.5 0 1 0 46 16.5A2.5 2.5 0 1 0 41 16.5ZM52 7H55V22H52ZM71 11H74V22H71ZM71 16A5 5 0 0 1 81 16V22H78V16A2 2 0 0 0 74 16ZM85 7H88V14L91 11H95.24L90.26 15.98L95.5 22H91.3L88 18.2V22H85ZM97 11H100V22H97ZM97 16A5 5 0 0 1 102 11H105V14H102A2 2 0 0 0 100 16Z"/><path class="wm-o" d="M58 17A5 5 0 1 1 68 17A5 5 0 1 1 58 17Z"/></svg></a>
+    <button class="menu-btn" type="button" aria-expanded="false" aria-controls="site-nav"><i aria-hidden="true"></i>Menu</button>
+    <nav class="nav" id="site-nav" aria-label="Main navigation">
+      <a href="../index.html#compare">The problem</a>
+      <a href="../index.html#how">How it goes</a>
+      <a href="../index.html#status">Status</a>
+      <a href="index.html" aria-current="page">Docs</a>
+    </nav>
+  </div>
+</header>
+<div class="wrap"><div class="docs-layout">
+<aside class="sidebar" aria-label="Documentation"><h4>Documentation</h4><nav><a href="index.html">Guide</a>
+<a href="profiles.html">Profiles and locations</a>
+<a href="configuration.html" aria-current="page">Configuration and tasks</a>
+<a href="repositories.html">Repository SSH keys</a>
+<a href="execution.html">Execution and results</a>
+<a href="examples.html">Examples</a></nav></aside>
+<main class="article" id="main"><p class="kicker">docs / v0.1.0 in development</p><h1 id="overview">Configuration and tasks</h1>
+<p class="lead">Describe the machine's accounts separately from its ordered setup work.</p><div class="notice"><p><strong>Behavior versus syntax:</strong> automatic user/group creation and the explicit opt-out are agreed. The HCL structure and helper names shown here are proposals and are not accepted by the current prototype parser.</p></div>
+<h2 id="creation">Automatic and explicit creation</h2>
+<p>Users and groups declared in <code>configuration</code> are automatically created on first run unless <code>create = false</code>. The same rule applies to both resource types.</p><p><code>create = false</code> means “do not create automatically.” An explicit setup call can still create that resource at the chosen point in a task. It does not mean that the resource can never be created.</p><p>Existing-resource checks and subsequent-run behavior still need to be defined. First-run creation does not imply a global “already configured” marker.</p>
+<h2 id="users">Users and groups</h2>
+<p>The draft user model includes a name, service-account designation, supplementary groups and SSH public keys. Groups can have a name and an optional numeric GID. Exact defaults and conflict rules remain under discussion.</p><pre><code>configuration {
+  groups = [
+    { name = "app" },
+    { name = "reports", create = false },
+  ]
+  users = [
+    { name = "app", service = true, groups = ["app"] },
+    { name = "reporter", service = false, groups = ["reports"], create = false },
+  ]
+}</code></pre><p><strong>Proposed HCL example:</strong> <code>app</code> is automatically created. The <code>reports</code> group and <code>reporter</code> user wait for explicit setup operations. Public keys grant login access; repository private keys serve a different purpose.</p>
+<h2 id="tasks">Named tasks and phases</h2>
+<p>The draft proposes named tasks with a numeric <code>order</code>. A task can contain managed <code>setup</code> operations, a shell <code>script</code>, or both. Within a task, setup would run before script regardless of attribute placement.</p><pre><code>tasks {
+  task "Prepare reports account" {
+    order = 10
+    setup = [group("reports"), user("reporter")]
+    script = ["echo reports-account-ready"]
+  }
+}</code></pre><p><strong>Proposed syntax:</strong> <code>group()</code> and <code>user()</code> are managed setup helpers. Shell commands belong in <code>script</code>. The proposed phase boundary prevents managed setup helpers from appearing in script and shell commands from appearing in setup.</p>
+<h2 id="ordering">Ordering still to finalize</h2>
+<p>The proposed baseline order is automatic groups, automatic users, then ordered tasks. It has not yet been approved. Task-order ties, dependencies on explicitly created groups, and what happens when setup fails before script also need final rules.</p><p>Timezone configuration, unit installation, local messages, conditions and profile inclusion need defined placement in the new structure. Their prototype behavior does not settle their new-format behavior.</p></main>
+<aside class="toc" aria-label="On this page"><h4>On this page</h4><nav><a href="#overview">Configuration and tasks</a>
+<a href="#creation">Automatic and explicit creation</a>
+<a href="#users">Users and groups</a>
+<a href="#tasks">Named tasks and phases</a>
+<a href="#ordering">Ordering still to finalize</a></nav></aside>
+</div></div>
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="foot-base" style="margin-top:0;border-top:0;padding-top:0">
+      <span>plonkr · documentation</span>
+      <span>Pre-release docs · plonkr.dev</span>
+    </div>
+  </div>
+</footer>
+</body>
+</html>

@@ -1,0 +1,15 @@
+dist/
+node_modules/
+.env
+.env.*
+/plonk
+/plonk.exe
+*.test
+*.out
+.stfolder
+.stignore
+.stignore.*
+.stversions
+.syncthing*
+~syncthing~*
+*.sync-conflict-*

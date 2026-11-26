@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Execution and results — Plonkr</title>
+<meta name="description" content="Plonkr previews, execution results and current limitations.">
+<meta name="theme-color" content="#0D0E12">
+<link rel="canonical" href="https://plonkr.dev/guide/execution.html">
+<link rel="icon" href="../assets/favicon.ico" sizes="48x48">
+<link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
+<link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
+<link rel="manifest" href="../assets/site.webmanifest">
+<link rel="stylesheet" href="../assets/site.css">
+<script src="../assets/site.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap bar">
+    <a class="logo" href="../index.html" aria-label="Plonkr home"><svg class="lockup" width="105" height="32" viewBox="0 0 105 32" role="img" aria-label="Plonkr"><circle class="peg" cx="8" cy="8" r="6"/><circle class="peg" cx="8" cy="24" r="6"/><circle class="peg" cx="24" cy="24" r="6"/><circle class="socket" cx="24" cy="8" r="4.5" fill="none" stroke-width="3"/><circle class="demo" cx="24" cy="8" r="6"/><path class="wm" d="M38 11H41V26H38ZM38 16.5A5.5 5.5 0 1 1 49 16.5A5.5 5.5 0 1 1 38 16.5ZM41 16.5A2.5 2.5 0 1 0 46 16.5A2.5 2.5 0 1 0 41 16.5ZM52 7H55V22H52ZM71 11H74V22H71ZM71 16A5 5 0 0 1 81 16V22H78V16A2 2 0 0 0 74 16ZM85 7H88V14L91 11H95.24L90.26 15.98L95.5 22H91.3L88 18.2V22H85ZM97 11H100V22H97ZM97 16A5 5 0 0 1 102 11H105V14H102A2 2 0 0 0 100 16Z"/><path class="wm-o" d="M58 17A5 5 0 1 1 68 17A5 5 0 1 1 58 17Z"/></svg></a>
+    <button class="menu-btn" type="button" aria-expanded="false" aria-controls="site-nav"><i aria-hidden="true"></i>Menu</button>
+    <nav class="nav" id="site-nav" aria-label="Main navigation">
+      <a href="../index.html#compare">The problem</a>
+      <a href="../index.html#how">How it goes</a>
+      <a href="../index.html#status">Status</a>
+      <a href="index.html" aria-current="page">Docs</a>
+    </nav>
+  </div>
+</header>
+<div class="wrap"><div class="docs-layout">
+<aside class="sidebar" aria-label="Documentation"><h4>Documentation</h4><nav><a href="index.html">Guide</a>
+<a href="profiles.html">Profiles and locations</a>
+<a href="configuration.html">Configuration and tasks</a>
+<a href="repositories.html">Repository SSH keys</a>
+<a href="execution.html" aria-current="page">Execution and results</a>
+<a href="examples.html">Examples</a></nav></aside>
+<main class="article" id="main"><p class="kicker">docs / v0.1.0 in development</p><h1 id="overview">Execution and results</h1>
+<p class="lead">Understand what will run and what actually happened.</p><p>The prototype expands profiles and snippets before executing a sequential plan over SSH. The new interface aims to report each action consistently in the terminal screen, plain output and saved summary.</p>
+<h2 id="preview">Preview before applying</h2>
+<p>The prototype's dry run validates and expands configuration without connecting to SSH or reading repository key files. It renders unit templates and shows selected and skipped work. A preview is a plan, not evidence that credentials, privileges or remote dependencies will work.</p><p>The final Plonkr preview command and flags are not settled yet.</p>
+<h2 id="results">Result meanings</h2>
+<ul><li><strong>Completed:</strong> intended to mean that the action executed successfully.</li><li><strong>Failed:</strong> intended to identify an action that encountered an error.</li><li><strong>Skipped:</strong> the prototype uses this for work gated by a disabled flag; the new contract is still being finalized.</li><li><strong>Ignored or bypassed:</strong> required as a distinct concept; behavior and naming are awaiting definition.</li></ul><p>These are interface goals, not a released status contract. Previewed work, cancellation and work never reached after failure also need distinguishable results. Bypass must not be assumed to mean “ignore errors and continue”; continuation and exit-code rules have not been decided.</p>
+<h2 id="failure">Failure and repeat runs</h2>
+<p>The prototype stops at the first failure. It has no retries, rollback or automatic resume. A failed operation may leave partial changes on the target. Existing repository destinations fail rather than being updated or verified.</p><p>Each shell item uses a separate remote shell: a <code>cd</code> or variable assignment in one item does not carry into the next. Keep dependent shell operations together. Cancellation stops local SSH but cannot guarantee that every remote descendant stops.</p><p>These limits describe the prototype; v0.1.0 repeat-run and recovery behavior must be agreed and verified before becoming a release guarantee.</p>
+<h2 id="logs">Output and logs</h2>
+<p>The prototype offers a terminal screen and plain output. Runs that reach execution logging save commands and combined stdout/stderr in a private log. Earlier loading failures may occur before a log is created.</p><p>Commands and their output can contain sensitive data. Terminal escape stripping does not redact secrets. The new log location, retention and exact output format are not finalized.</p>
+<h2 id="platforms">Platforms and privileges</h2>
+<p>Managed prototype operations assume Linux tools; unit installation assumes systemd. Provisioning requires the appropriate target-user permissions, root or noninteractive sudo. Profiles execute trusted shell code with those privileges.</p><p>The intended machine types are containers, VMs and bare metal. That does not imply support for every operating system. Windows profile storage is agreed, while Windows controller behavior and the first supported target systems still need verification.</p></main>
+<aside class="toc" aria-label="On this page"><h4>On this page</h4><nav><a href="#overview">Execution and results</a>
+<a href="#preview">Preview before applying</a>
+<a href="#results">Result meanings</a>
+<a href="#failure">Failure and repeat runs</a>
+<a href="#logs">Output and logs</a>
+<a href="#platforms">Platforms and privileges</a></nav></aside>
+</div></div>
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="foot-base" style="margin-top:0;border-top:0;padding-top:0">
+      <span>plonkr · documentation</span>
+      <span>Pre-release docs · plonkr.dev</span>
+    </div>
+  </div>
+</footer>
+</body>
+</html>

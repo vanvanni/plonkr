@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Examples — Plonkr</title>
+<meta name="description" content="Proposed Plonkr profiles for automatic accounts, explicit setup and repository cloning.">
+<meta name="theme-color" content="#0D0E12">
+<link rel="canonical" href="https://plonkr.dev/guide/examples.html">
+<link rel="icon" href="../assets/favicon.ico" sizes="48x48">
+<link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
+<link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
+<link rel="manifest" href="../assets/site.webmanifest">
+<link rel="stylesheet" href="../assets/site.css">
+<script src="../assets/site.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap bar">
+    <a class="logo" href="../index.html" aria-label="Plonkr home"><svg class="lockup" width="105" height="32" viewBox="0 0 105 32" role="img" aria-label="Plonkr"><circle class="peg" cx="8" cy="8" r="6"/><circle class="peg" cx="8" cy="24" r="6"/><circle class="peg" cx="24" cy="24" r="6"/><circle class="socket" cx="24" cy="8" r="4.5" fill="none" stroke-width="3"/><circle class="demo" cx="24" cy="8" r="6"/><path class="wm" d="M38 11H41V26H38ZM38 16.5A5.5 5.5 0 1 1 49 16.5A5.5 5.5 0 1 1 38 16.5ZM41 16.5A2.5 2.5 0 1 0 46 16.5A2.5 2.5 0 1 0 41 16.5ZM52 7H55V22H52ZM71 11H74V22H71ZM71 16A5 5 0 0 1 81 16V22H78V16A2 2 0 0 0 74 16ZM85 7H88V14L91 11H95.24L90.26 15.98L95.5 22H91.3L88 18.2V22H85ZM97 11H100V22H97ZM97 16A5 5 0 0 1 102 11H105V14H102A2 2 0 0 0 100 16Z"/><path class="wm-o" d="M58 17A5 5 0 1 1 68 17A5 5 0 1 1 58 17Z"/></svg></a>
+    <button class="menu-btn" type="button" aria-expanded="false" aria-controls="site-nav"><i aria-hidden="true"></i>Menu</button>
+    <nav class="nav" id="site-nav" aria-label="Main navigation">
+      <a href="../index.html#compare">The problem</a>
+      <a href="../index.html#how">How it goes</a>
+      <a href="../index.html#status">Status</a>
+      <a href="index.html" aria-current="page">Docs</a>
+    </nav>
+  </div>
+</header>
+<div class="wrap"><div class="docs-layout">
+<aside class="sidebar" aria-label="Documentation"><h4>Documentation</h4><nav><a href="index.html">Guide</a>
+<a href="profiles.html">Profiles and locations</a>
+<a href="configuration.html">Configuration and tasks</a>
+<a href="repositories.html">Repository SSH keys</a>
+<a href="execution.html">Execution and results</a>
+<a href="examples.html" aria-current="page">Examples</a></nav></aside>
+<main class="article" id="main"><p class="kicker">docs / v0.1.0 in development</p><h1 id="overview">A small setup profile</h1>
+<p class="lead">Automatic accounts, an explicitly created account, and a repository checkout.</p><div class="notice"><p><strong>Design example:</strong> this uses the proposed HCL configuration and task structure. It is not runnable with the current prototype. Exact grammar, baseline ordering and task failure rules remain under discussion.</p></div>
+<h2 id="profile">Proposed profile</h2>
+<pre><code>name = "Prepare application machine"
+
+configuration {
+  groups = [
+    { name = "app" },
+    { name = "reports", create = false },
+  ]
+  users = [
+    { name = "app", service = true, groups = ["app"] },
+    { name = "reporter", service = false, groups = ["reports"], create = false },
+  ]
+}
+
+repository "your-repo" {
+  url  = "git@example.com:team/your-repo.git"
+  path = "/srv/your-repo"
+  user = "app"
+  key  = "/home/operator/.ssh/your-repo"
+  ref  = "main"
+}
+
+tasks {
+  task "Create reports account" {
+    order = 10
+    setup = [group("reports"), user("reporter")]
+  }
+
+  task "Clone application" {
+    order = 20
+    setup = [repo("your-repo")]
+    script = ["echo application-checkout-ready"]
+  }
+}</code></pre>
+<h2 id="walkthrough">How to read it</h2>
+<ol><li>The <code>app</code> group and user opt into automatic creation by omitting <code>create = false</code>.</li><li>The <code>reports</code> group and <code>reporter</code> user are created explicitly in the first task.</li><li>The second task requests repository setup as <code>app</code>, using the exact key file from the controller.</li><li>In the proposed phase model, the shell message runs only after that task's setup phase succeeds.</li></ol><p>The example assumes the proposed groups-before-users baseline and tasks in ascending order. Those ordering details still need approval. It does not install Git, grant access at the repository provider, set repository host trust, or make <code>/srv</code> writable for <code>app</code>. Those prerequisites must be prepared for an actual acceptance run.</p>
+<h2 id="snippets">Reusable shell work</h2>
+<p>The prototype supports named snippets referenced through <code>run()</code>. Keeping that capability in the script phase is proposed:</p><pre><code>snippet "inspect-machine" {
+  commands = ["uname -a", "id"]
+}
+
+# Proposed task script attribute:
+# script = [run("inspect-machine")]</code></pre><p>In the prototype, snippet names are independent of filenames, nested includes expand in place, and cycles fail during loading. Placement and discovery in the new profile directory still need to be finalized.</p>
+<h2 id="next">Before turning this into a runnable profile</h2>
+<p>Use the final schema and supported paths once released, replace the placeholder repository, supply an authorized deploy key, and prepare the target permissions and host trust. Installation and runnable command examples will be added after those paths are implemented and verified.</p><p>See <a href="configuration.html">configuration and tasks</a>, <a href="repositories.html">repository SSH keys</a> and <a href="execution.html">execution limits</a> for the surrounding behavior.</p></main>
+<aside class="toc" aria-label="On this page"><h4>On this page</h4><nav><a href="#overview">A small setup profile</a>
+<a href="#profile">Proposed profile</a>
+<a href="#walkthrough">How to read it</a>
+<a href="#snippets">Reusable shell work</a>
+<a href="#next">Before turning this into a runnable profile</a></nav></aside>
+</div></div>
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="foot-base" style="margin-top:0;border-top:0;padding-top:0">
+      <span>plonkr · documentation</span>
+      <span>Pre-release docs · plonkr.dev</span>
+    </div>
+  </div>
+</footer>
+</body>
+</html>

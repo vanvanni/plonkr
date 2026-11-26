@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Plonkr: make every new machine yours</title>
+<meta name="description" content="Plonkr is a CLI project for configuring machines that already exist, over SSH, so you stop retyping the same setup. The command is plonk. In development.">
+<meta name="theme-color" content="#0D0E12">
+<meta property="og:title" content="Plonkr: make every new machine yours">
+<meta property="og:description" content="Configure existing machines over SSH. A CLI project in development.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://plonkr.dev/">
+<meta property="og:image" content="https://plonkr.dev/assets/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://plonkr.dev/">
+<link rel="icon" href="assets/favicon.ico" sizes="48x48">
+<link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<link rel="manifest" href="assets/site.webmanifest">
+<link rel="stylesheet" href="assets/site.css">
+<script src="assets/site.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="site-header">
+  <div class="wrap bar">
+    <a class="logo" href="index.html" aria-label="Plonkr home"><svg class="lockup" width="105" height="32" viewBox="0 0 105 32" role="img" aria-label="Plonkr"><circle class="peg" cx="8" cy="8" r="6"/><circle class="peg" cx="8" cy="24" r="6"/><circle class="peg" cx="24" cy="24" r="6"/><circle class="socket" cx="24" cy="8" r="4.5" fill="none" stroke-width="3"/><circle class="demo" cx="24" cy="8" r="6"/><path class="wm" d="M38 11H41V26H38ZM38 16.5A5.5 5.5 0 1 1 49 16.5A5.5 5.5 0 1 1 38 16.5ZM41 16.5A2.5 2.5 0 1 0 46 16.5A2.5 2.5 0 1 0 41 16.5ZM52 7H55V22H52ZM71 11H74V22H71ZM71 16A5 5 0 0 1 81 16V22H78V16A2 2 0 0 0 74 16ZM85 7H88V14L91 11H95.24L90.26 15.98L95.5 22H91.3L88 18.2V22H85ZM97 11H100V22H97ZM97 16A5 5 0 0 1 102 11H105V14H102A2 2 0 0 0 100 16Z"/><path class="wm-o" d="M58 17A5 5 0 1 1 68 17A5 5 0 1 1 58 17Z"/></svg></a>
+    <button class="menu-btn" type="button" aria-expanded="false" aria-controls="site-nav"><i aria-hidden="true"></i>Menu</button>
+    <nav class="nav" id="site-nav" aria-label="Main navigation">
+      <a href="#compare">The problem</a>
+      <a href="#how">How it goes</a>
+      <a href="#scope">Scope</a>
+      <a href="#status">Status</a>
+      <a class="btn btn-primary btn-sm" href="guide/index.html">Docs</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+
+  <section class="hero" aria-labelledby="hero-title">
+    <div class="wrap">
+      <div class="copy">
+        <p class="dict"><b>plonk</b> <i>v.</i> to set something down firmly, where you want it.</p>
+        <h1 id="hero-title">Make every new machine <span class="scribble">yours.<svg viewBox="0 0 300 12" preserveAspectRatio="none" aria-hidden="true"><path d="M2 8C34 3 72 10 118 6S196 3 244 7 288 5 298 4"/></svg></span></h1>
+        <p class="lead">You’ve made the container. Now comes the bit where you type what you typed last time. Plonkr is a CLI for configuring machines that already exist, over SSH, so you can skip that part.</p>
+        <div class="hero-actions">
+          <a class="btn btn-primary" href="guide/index.html">Read the docs <span class="arrow" aria-hidden="true">→</span></a>
+          <a class="textlink" href="#how">How it goes</a>
+        </div>
+      </div>
+
+      <div class="stage">
+        <div class="window" id="demo">
+          <div class="window-bar">
+            <div class="dots" aria-hidden="true"><i></i><i></i><i></i></div>
+            <span class="window-title">plonk</span>
+            <span class="window-tag">concept preview</span>
+          </div>
+          <div class="tablist" role="tablist" aria-label="Example machines">
+            <button type="button" role="tab" id="tab-lxc" aria-selected="true" aria-controls="panel-lxc"><span class="tab-name">lab-ct</span><span class="tab-kind">LXC</span></button>
+            <button type="button" role="tab" id="tab-vm" aria-selected="false" aria-controls="panel-vm" tabindex="-1"><span class="tab-name">dev-vm</span><span class="tab-kind">VM</span></button>
+            <button type="button" role="tab" id="tab-metal" aria-selected="false" aria-controls="panel-metal" tabindex="-1"><span class="tab-name">rack-01</span><span class="tab-kind">bare metal</span></button>
+          </div>
+          <div class="output">
+            <div role="tabpanel" id="panel-lxc" aria-labelledby="tab-lxc" tabindex="0">
+              <span class="ln"><span class="prompt">$ </span>plonk <span class="cmt"># syntax pending</span></span>
+              <span class="ln gap reveal-line"><span class="host">▸ lab-ct</span> <span class="dim">· LXC container · over SSH</span></span>
+              <span class="ln step reveal-line"><span class="tick">✓</span><span>Connected</span><span class="note">1/4</span></span>
+              <span class="ln step reveal-line"><span class="tick">✓</span><span>System updated</span><span class="note">2/4</span></span>
+              <span class="ln step reveal-line"><span class="tick">✓</span><span>Git, curl and wget installed</span><span class="note">3/4</span></span>
+              <span class="ln step last reveal-line"><span class="tick">✓</span><span>Working environment ready</span><span class="note">4/4</span></span>
+              <span class="ln gap reveal-line"><span class="prompt">$ </span><span class="cursor" aria-hidden="true"></span></span>
+            </div>
+            <div role="tabpanel" id="panel-vm" aria-labelledby="tab-vm" tabindex="0" hidden>
+              <span class="ln"><span class="prompt">$ </span>plonk <span class="cmt"># syntax pending</span></span>
+              <span class="ln gap reveal-line"><span class="host">▸ dev-vm</span> <span class="dim">· virtual machine · over SSH</span></span>
+              <span class="ln step reveal-line"><span class="tick">✓</span><span>Connected</span><span class="note">1/4</span></span>
+              <span class="ln step reveal-line"><span class="tick">✓</span><span>System updated</span><span class="note">2/4</span></span>
+              <span class="ln step reveal-line"><span class="tick">✓</span><span>Git, curl and wget installed</span><span class="note">3/4</span></span>
+              <span class="ln step last reveal-line"><span class="tick">✓</span><span>Working environment ready</span><span class="note">4/4</span></span>
+              <span class="ln gap reveal-line"><span class="prompt">$ </span><span class="cursor" aria-hidden="true"></span></span>
+            </div>
+            <div role="tabpanel" id="panel-metal" aria-labelledby="tab-metal" tabindex="0" hidden>
+              <span class="ln"><span class="prompt">$ </span>plonk <span class="cmt"># syntax pending</span></span>
+              <span class="ln gap reveal-line"><span class="host">▸ rack-01</span> <span class="dim">· bare metal · over SSH</span></span>
+              <span class="ln step reveal-line"><span class="tick">✓</span><span>Connected</span><span class="note">1/4</span></span>
+              <span class="ln step reveal-line"><span class="tick">✓</span><span>System updated</span><span class="note">2/4</span></span>
+              <span class="ln step reveal-line"><span class="tick">✓</span><span>Git, curl and wget installed</span><span class="note">3/4</span></span>
+              <span class="ln step last reveal-line"><span class="tick">✓</span><span>Working environment ready</span><span class="note">4/4</span></span>
+              <span class="ln gap reveal-line"><span class="prompt">$ </span><span class="cursor" aria-hidden="true"></span></span>
+            </div>
+            <p class="aside" aria-hidden="true"><svg viewBox="0 0 44 18"><path d="M42 9C32 5 18 4 4 9M4 9l8-6M4 9l8 5"/></svg><span>still deciding this bit</span></p>
+            <button class="replay" type="button" id="replay" aria-label="Replay the example">↻ replay</button>
+          </div>
+          <div class="window-foot">Made-up hostnames and output. Real commands come with the proof of concept.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="targets">
+    <div class="wrap"><p>For <em>LXC containers</em>, <em>virtual machines</em> and <em>bare metal</em>: anything you can already reach over SSH.</p></div>
+  </div>
+
+  <section class="section" id="compare" aria-labelledby="compare-title">
+    <div class="wrap">
+      <div class="compare-head">
+        <h2 id="compare-title">Same list. Every machine.</h2>
+        <p class="sub">Creating a machine is the interesting part. What comes after is a checklist you already know by heart, and retype anyway.</p>
+      </div>
+      <div class="compare">
+        <div class="pane">
+          <div class="pane-head"><span>by hand</span><b>every time</b></div>
+<pre><span class="hl">$ ssh lab-ct</span>
+  update the system
+  install git, curl, wget
+  set up the working environment
+<span class="sep"></span><span class="hl">$ ssh dev-vm</span>
+  update the system
+  install git, curl, wget
+  set up the working environment
+<span class="sep"></span><span class="hl">$ ssh rack-01</span>
+  <span class="c">…and again</span>
+</pre>
+          <div class="pane-foot">Easy, and easy to do slightly differently each time.</div>
+        </div>
+        <div class="pane hot">
+          <div class="pane-head"><span>with plonkr</span><b>the idea</b></div>
+<pre><span class="hl">$ plonk</span> <span class="c"># syntax pending</span>
+<span class="hl">▸ lab-ct</span>
+<span class="v">  ✓</span> system updated
+<span class="v">  ✓</span> git, curl, wget installed
+<span class="v">  ✓</span> working environment ready
+<span class="sep"></span><span class="hl">▸ dev-vm</span>
+<span class="v">  ✓</span> same result
+<span class="sep"></span><span class="hl">▸ rack-01</span>
+<span class="v">  ✓</span> same result
+</pre>
+          <div class="pane-foot">One setup, put in place. Illustrative only.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="how" aria-labelledby="how-title">
+    <div class="wrap how">
+      <div class="how-head">
+        <h2 id="how-title">Three steps. You already do the first one.</h2>
+        <p class="sub">Plonkr doesn’t change how you create machines. It starts when you’re done.</p>
+      </div>
+      <ol class="steps">
+        <li>
+          <div><h3>Make the machine</h3><p>Container, VM or a box on a shelf. Use whatever you use today.</p></div>
+          <svg class="sketch" viewBox="0 0 150 84" aria-hidden="true"><path d="M34 16L118 14L120 66L32 68Z"/><path d="M33 30L119 29"/><path d="M42 22h1M50 22h1"/><path class="acc" d="M46 48L74 49"/></svg>
+        </li>
+        <li>
+          <div><h3>Reach it over SSH</h3><p>Plonkr connects to the machine that’s already there, the way you would from your own terminal.</p></div>
+          <svg class="sketch" viewBox="0 0 150 84" aria-hidden="true"><path d="M8 26L48 25L49 56L7 57Z"/><path d="M17 34l7 5-7 5M29 45h8"/><path class="acc" stroke-dasharray="3 6" d="M54 41C72 34 86 48 100 41"/><path d="M104 26L144 25L145 56L103 57Z"/><path d="M113 34h22M113 41h22M113 48h14"/></svg>
+        </li>
+        <li>
+          <div><h3>Put the setup in place</h3><p>Updates, the usual tools, your working environment. The same result each time, then back to your actual work.</p></div>
+          <svg class="sketch" viewBox="0 0 150 84" aria-hidden="true"><path d="M36 12L116 10L118 72L34 74Z"/><path class="acc" d="M48 28l6 6 11-13M48 50l6 6 11-13"/><path d="M76 28h28M76 50h28"/></svg>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="section" id="scope" aria-labelledby="scope-title">
+    <div class="wrap">
+      <h2 id="scope-title">What it is, and what it isn’t.</h2>
+      <p class="sub">Plonkr is early, so it’s worth being clear about the edges.</p>
+      <div class="split">
+        <div class="yes">
+          <h3>It is</h3>
+          <ul>
+            <li><strong>For machines that already exist.</strong> Containers, VMs and bare metal.</li>
+            <li><strong>Used over SSH.</strong> It meets your machines where they already are.</li>
+            <li><strong>Aimed at the first-hour chores.</strong> Updates, the usual tools, your working environment.</li>
+            <li><strong>One command:</strong> <code>plonk</code>.</li>
+          </ul>
+        </div>
+        <div class="no">
+          <h3>It isn’t</h3>
+          <ul>
+            <li><strong>A way to create machines.</strong> Keep using whatever you use now.</li>
+            <li><strong>Released.</strong> There’s nothing to install yet.</li>
+            <li><strong>Decided.</strong> Command syntax, config format and supported platforms wait for the proof of concept.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="status" aria-labelledby="status-title">
+    <div class="wrap">
+      <h2 id="status-title">Where it’s at.</h2>
+      <p class="sub">Branding first, then the proof of concept, then a v0.1.0 pre-release.</p>
+      <ol class="log">
+        <li><span class="state done">Settled</span><div><h3>Name and command</h3><p>The project is Plonkr. You type <code>plonk</code>.</p></div></li>
+        <li><span class="state now">In review</span><div><h3>Look and feel</h3><p>The mark, the violet and graphite palette, and this site.</p></div></li>
+        <li><span class="state">Up next</span><div><h3>Proof of concept</h3><p>Import it, read it properly, decide what the first release includes.</p></div></li>
+        <li><span class="state">Later</span><div><h3>v0.1.0 pre-release</h3><p>Shipped alongside installation and command docs that have been checked against it.</p></div></li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="cta" aria-labelledby="cta-title">
+    <div class="wrap">
+      <div class="cta-mark" aria-hidden="true"><svg class="mark" width="112" height="112" viewBox="0 0 16 16" aria-hidden="true"><circle class="peg" cx="4" cy="4" r="3"/><circle class="peg" cx="4" cy="12" r="3"/><circle class="peg" cx="12" cy="12" r="3"/><circle class="socket" cx="12" cy="4" r="2.25" fill="none" stroke-width="1.5"/><circle class="demo" cx="12" cy="4" r="3"/></svg></div>
+      <div>
+        <h2 id="cta-title">Your next machine starts here.</h2>
+        <p>Follow Plonkr from its first public shape to v0.1.0.</p>
+        <div class="hero-actions">
+          <a class="btn btn-primary" href="guide/index.html">Read the project guide <span class="arrow" aria-hidden="true">→</span></a>
+          <a class="textlink" href="guide/index.html#release">Road to v0.1.0</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="foot-grid">
+      <div class="foot-brand">
+        <a class="logo" href="index.html" aria-label="Plonkr home"><svg class="lockup" width="105" height="32" viewBox="0 0 105 32" role="img" aria-label="Plonkr"><circle class="peg" cx="8" cy="8" r="6"/><circle class="peg" cx="8" cy="24" r="6"/><circle class="peg" cx="24" cy="24" r="6"/><circle class="socket" cx="24" cy="8" r="4.5" fill="none" stroke-width="3"/><circle class="demo" cx="24" cy="8" r="6"/><path class="wm" d="M38 11H41V26H38ZM38 16.5A5.5 5.5 0 1 1 49 16.5A5.5 5.5 0 1 1 38 16.5ZM41 16.5A2.5 2.5 0 1 0 46 16.5A2.5 2.5 0 1 0 41 16.5ZM52 7H55V22H52ZM71 11H74V22H71ZM71 16A5 5 0 0 1 81 16V22H78V16A2 2 0 0 0 74 16ZM85 7H88V14L91 11H95.24L90.26 15.98L95.5 22H91.3L88 18.2V22H85ZM97 11H100V22H97ZM97 16A5 5 0 0 1 102 11H105V14H102A2 2 0 0 0 100 16Z"/><path class="wm-o" d="M58 17A5 5 0 1 1 68 17A5 5 0 1 1 58 17Z"/></svg></a>
+        <p>Configure existing machines over SSH. Still being built.</p>
+      </div>
+      <div class="foot-col">
+        <h4>This page</h4>
+        <ul><li><a href="#compare">The problem</a></li><li><a href="#how">How it goes</a></li><li><a href="#scope">Scope</a></li><li><a href="#status">Status</a></li></ul>
+      </div>
+      <div class="foot-col">
+        <h4>Docs</h4>
+        <ul><li><a href="guide/index.html">Project guide</a></li><li><a href="guide/index.html#installation">Installation</a></li><li><a href="guide/index.html#reference">Command reference</a></li><li><a href="guide/index.html#release">Road to v0.1.0</a></li></ul>
+      </div>
+      <div class="foot-col">
+        <h4>Names</h4>
+        <ul><li>Product: Plonkr</li><li>Command: <code>plonk</code></li><li>Home: plonkr.dev</li></ul>
+      </div>
+    </div>
+    <div class="foot-base">
+      <span>© Plonkr. Work in progress.</span>
+      <span>Everything here is a proposal until the proof of concept has been reviewed.</span>
+    </div>
+  </div>
+</footer>
+</body>
+</html>
