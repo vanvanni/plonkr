@@ -41,7 +41,7 @@ stable CLI code is promoted.
   after those jobs pass does it create a draft GitHub release, marking candidates
   as prereleases. Review acceptance evidence, assets and notes before publication.
   An existing release is never overwritten by a rerun.
-- **Website:** builds branch/PR changes, but deploys to plonkr.dev only from `main`.
+- **Website:** builds branch/PR changes, but deploys to plonkr.dev only from `prerelease` (until a stable release lands on `main`).
 
 Before tagging, run the full suite from the repository root:
 
