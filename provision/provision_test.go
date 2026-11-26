@@ -498,6 +498,38 @@ func posixEnv(sh string, extra ...string) []string {
 	return append(env, extra...)
 }
 
+// Prepend fixture commands after the shell has imported the Windows environment.
+// Git Bash needs a colon-delimited POSIX PATH, not a Windows drive/path list.
+// Export it so nested sh invocations in the provisioning scripts use the mocks too.
+func withPOSIXTools(tools, script string) string {
+	return "fixture_tools=" + quote(filepath.ToSlash(tools)) + `
+if command -v cygpath >/dev/null 2>&1; then
+  fixture_tools=$(cygpath -u "$fixture_tools")
+fi
+PATH="$fixture_tools:$PATH"
+export PATH
+` + script
+}
+
+func TestPOSIXToolsReachNestedShell(t *testing.T) {
+	sh := findPOSIXShell()
+	if sh == "" {
+		t.Skip("no POSIX shell")
+	}
+	tools := filepath.Join(t.TempDir(), "mock tools")
+	if err := os.Mkdir(tools, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(tools, "id"), []byte("#!/bin/sh\nprintf 'fixture-root\\n'\n"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.CommandContext(t.Context(), sh, "-ec", withPOSIXTools(tools, `test "$(id -u)" = fixture-root; sh -ec 'test "$(id -u)" = fixture-root'`))
+	cmd.Env = posixEnv(sh)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("nested shell bypassed mock commands: %v: %s", err, out)
+	}
+}
+
 func TestRepoScriptPOSIXExecution(t *testing.T) {
 	sh := findPOSIXShell()
 	if sh == "" {
@@ -799,14 +831,8 @@ exit 2
 
 		script := userScript(profile.User{Name: "app", Home: "/var/lib/app", Shell: "/usr/sbin/nologin", Service: true, Groups: []string{"app"}})
 		cmd := exec.CommandContext(t.Context(), sh, "-ec", script)
-		env := posixEnv(sh)
-		for i, kv := range env {
-			if strings.HasPrefix(strings.ToUpper(kv), "PATH=") {
-				idx := strings.IndexByte(kv, '=')
-				env[i] = kv[:idx+1] + tools + string(os.PathListSeparator) + kv[idx+1:]
-			}
-		}
-		cmd.Env = env
+		cmd.Env = posixEnv(sh)
+		cmd.Args[len(cmd.Args)-1] = withPOSIXTools(tools, cmd.Args[len(cmd.Args)-1])
 		out, err := cmd.CombinedOutput()
 		if err != nil {
 			t.Fatalf("user script failed: %v: %s", err, out)
@@ -878,14 +904,8 @@ esac
 		for _, tc := range tests {
 			t.Run(tc.name, func(t *testing.T) {
 				cmd := exec.CommandContext(t.Context(), sh, "-ec", groupScript(tc.group))
-				env := posixEnv(sh)
-				for i, kv := range env {
-					if strings.HasPrefix(strings.ToUpper(kv), "PATH=") {
-						idx := strings.IndexByte(kv, '=')
-						env[i] = kv[:idx+1] + tools + string(os.PathListSeparator) + kv[idx+1:]
-					}
-				}
-				cmd.Env = env
+				cmd.Env = posixEnv(sh)
+				cmd.Args[len(cmd.Args)-1] = withPOSIXTools(tools, cmd.Args[len(cmd.Args)-1])
 				out, err := cmd.CombinedOutput()
 				if (err != nil) != tc.wantErr {
 					t.Fatalf("err=%v wantErr=%v out=%s", err, tc.wantErr, out)
@@ -917,14 +937,8 @@ esac
 		script := strings.ReplaceAll(unitScript(unit), "/etc/systemd/system", unitDir)
 		runUnit := func(input string) (string, error) {
 			cmd := exec.CommandContext(t.Context(), sh, "-ec", script)
-			env := posixEnv(sh)
-			for i, kv := range env {
-				if strings.HasPrefix(strings.ToUpper(kv), "PATH=") {
-					idx := strings.IndexByte(kv, '=')
-					env[i] = kv[:idx+1] + tools + string(os.PathListSeparator) + kv[idx+1:]
-				}
-			}
-			cmd.Env = env
+			cmd.Env = posixEnv(sh)
+			cmd.Args[len(cmd.Args)-1] = withPOSIXTools(tools, cmd.Args[len(cmd.Args)-1])
 			cmd.Stdin = strings.NewReader(input)
 			out, err := cmd.CombinedOutput()
 			return string(out), err
