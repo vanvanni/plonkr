@@ -1,46 +1,128 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/design/assets/identity/plonkr-lockup-4x.svg" />
+    <source media="(prefers-color-scheme: light)" srcset="docs/design/assets/identity/plonkr-lockup-4x-on-light.svg" />
+    <img src="docs/design/assets/identity/plonkr-lockup-4x-on-light.svg" alt="Plonkr" width="420" height="128" />
+  </picture>
+</p>
+
+<p align="center">
+  <strong>Make every new machine yours.</strong><br />
+  Configure existing machines over SSH, with a little less ceremony.
+</p>
+
+<p align="center">
+  <a href="https://github.com/vanvanni/plonkr/actions/workflows/checks.yml?query=branch%3Aprerelease"><img src="https://github.com/vanvanni/plonkr/actions/workflows/checks.yml/badge.svg?branch=prerelease" alt="Checks on prerelease" /></a>
+  <a href="https://github.com/vanvanni/plonkr/releases"><img src="https://img.shields.io/badge/status-beta-B5A0FF?style=flat&amp;labelColor=17181F" alt="Status: beta" /></a>
+  <a href="go.mod"><img src="https://img.shields.io/badge/Go-1.26%2B-8A74E0?style=flat&amp;labelColor=17181F&amp;logo=go&amp;logoColor=white" alt="Go 1.26 or newer" /></a>
+  <a href="BRANCHES.md"><img src="https://img.shields.io/badge/versioning-CalVer-B5A0FF?style=flat&amp;labelColor=17181F" alt="Versioning: CalVer" /></a>
+</p>
+
+<p align="center">
+  <a href="https://plonkr.dev">Website</a> ·
+  <a href="CLI.md">CLI guide</a> ·
+  <a href="examples/">Examples</a> ·
+  <a href="https://github.com/vanvanni/plonkr/issues">Report an issue</a>
+</p>
+
 # Plonkr
 
-Machine setup, with a little less ceremony.
+Plonkr automates the setup work that comes after creating a machine. Describe users, groups, repositories and ordered tasks in a profile, then run it against a host you can already reach over SSH. The command is **plonk**.
 
-Plonkr is being built to automate repeat setup on existing LXC containers, VMs, and bare metal. The command is `plonk`. The repository root is the Go module for the v2026.11.0-beta.1 CLI. Disposable Ubuntu acceptance tests pass; release packaging remains pending, so there is no installable Plonkr release yet.
+**Beta — no stable release yet.** The current version is **2026.11.0-beta.1**. Build from source to try it. Interfaces and behavior may change before stable.
 
-The [public guide](docs/guide/index.html) covers profile locations, configuration and tasks, repository SSH keys, execution results and examples. It distinguishes agreed v2026.11.0 behavior from proposed syntax and prototype capabilities while verification is completed.
+## What you can do
 
-## Layout
+- Create users and groups automatically, or defer creation to an explicit task.
+- Combine managed setup operations with ordered shell scripts and reusable snippets.
+- Clone repositories as the intended user using an existing local deploy-key file, copied byte-for-byte.
+- Render and install systemd units and configure the target timezone.
+- Preview a plan before connecting, enable profile-defined flags, or bypass selected tasks.
+- Follow completed, failed, skipped and bypassed work in terminal output and saved logs.
 
-- `go.mod`, `main.go`: Go module and CLI entry point.
-- `cmd/`, `profile/`, `runner/`, `provision/`, `runlog/`, `ui/`: CLI packages.
-- `examples/`: sample profiles, snippets and templates.
-- `acceptance/`: opt-in Multipass suite.
-- `docs/`: landing page and public documentation, deployed as one static site.
-- `docs/design/`: current Figcraft source, PNG exports, vector assets, and branding tools; excluded from website deployment.
-- `scripts/`: dependency-free website build and validation.
+Plonkr runs through your OpenSSH client and requires no agent on the target. Managed operations target Linux; systemd operations require systemd. Windows and Linux controller builds are available from source. Real SSH acceptance has been exercised with a Linux controller in a disposable Ubuntu 24.04 VM; native Windows SSH transport remains unverified.
 
-Requires Node.js 24 for website tooling. Run `npm run build` to validate links and generate `dist/`. Open `docs/index.html` locally to review the site without a server. The site is plain HTML, CSS and one small script (`docs/assets/site.js`) for the terminal preview; it makes no third-party requests.
+## Build from source
 
-Build and test from this repository root (the directory containing this README):
+Requires **Go 1.26+** and **OpenSSH**. Target account and system changes require root or the appropriate noninteractive sudo permissions.
 
 ```sh
+git clone --branch prerelease https://github.com/vanvanni/plonkr.git
+cd plonkr
 go build -o plonk .
+```
+
+On Windows, use `go build -o plonk.exe .`. Run `./plonk` on Linux or `.\plonk.exe` in PowerShell; the commands below use `go run .` so they work from the repository root on either platform.
+
+## Try a profile
+
+Validate the included minimal example, then preview it without connecting:
+
+```sh
+go run . validate ./examples/minimal.hcl
+go run . run my-host ./examples/minimal.hcl --dry-run
+```
+
+The example sets the timezone to UTC and runs two inspection commands:
+
+```hcl
+name = "Minimal machine check"
+
+configuration {
+  timezone = "UTC"
+}
+
+tasks {
+  task "Inspect host" {
+    order = 10
+    script = ["uname -a", "id"]
+  }
+}
+```
+
+When ready to apply it, replace `my-host` with your SSH alias or `user@host`:
+
+```sh
+go run . run my-host ./examples/minimal.hcl
+```
+
+For accounts, repository access and unit templates, see [the application example](examples/app-machine.hcl). Replace its sample repository, key and host values before running it. The [CLI guide](CLI.md) explains prerequisites and execution behavior.
+
+## Profiles and repository keys
+
+Named profiles live in `/etc/plonkr/` on Linux or `%ProgramData%\plonkr\` on Windows. Set `PLONK_PROFILES_DIR` or pass `--profiles-dir` to use another directory. Includes, snippets and templates load with the selected profile.
+
+Repository keys reference an absolute file path on your controller. Plonkr preserves that file's bytes and installs a private copy directly as `~/.ssh/plonkr-REPOSITORY.key` for the target user. A different existing key triggers a warning and an approval prompt. `--auto-approve` allows unattended replacement; identical keys do not prompt. The beta requires unencrypted keys.
+
+Repository Git connections automatically accept unknown or changed SSH host keys, without verifying server identity against `known_hosts`. The controller-to-target connection follows your existing OpenSSH policy.
+
+## Execution behavior
+
+Work runs sequentially and stops at the first failure. There is no automatic rollback. Shell state does not carry between separate script items. Matching existing checkouts are verified; they are not automatically updated. Logs contain commands and output, so avoid printing secrets from profiles.
+
+## Development and testing
+
+Run from the repository root:
+
+```sh
 go vet ./...
 go test -count=1 ./...
 ```
 
-See [CLI usage](CLI.md) for commands and configuration.
-Releases use CalVer (`YYYY.MM.PATCH`), for example `2026.11.0` or `2026.11.0-rc.1`.
-For the optional full CLI and website check, see the [Multipass acceptance suite](acceptance/README.md).
-Run `go test -tags multipass ./acceptance -v -count=1 -timeout 45m` from this repository root
-on Windows or Linux with Multipass installed. It uses a disposable Ubuntu VM;
-ordinary Go tests stay fast and do not start VMs.
+For the optional full suite, install Multipass and Node.js 24+, then run:
 
-## GitHub Pages
+```sh
+go test -tags multipass ./acceptance -v -count=1 -timeout 45m
+```
 
-See [domain setup](PAGES.md) for `plonkr.dev`, including DNS records and repository settings.
+The suite runs native checks, website validation, Linux race tests and real SSH scenarios in a disposable Ubuntu VM. It uses generated fixture credentials, saves results and removes its own VM. It is excluded from ordinary Go tests. See [coverage and debugging](acceptance/README.md).
 
-Branch roles, checks and release tagging are described in [Branches and releases](BRANCHES.md).
+The website and public docs live in `docs/`. Use `npm run check` to validate them and `npm run build` to generate `dist/`. [Pages setup](PAGES.md) covers the custom domain.
 
-Push this directory as the repository root. Enable Settings → Pages → GitHub Actions. The workflow checks pull requests, builds pushes to main, and offers manual deployment from main. Configure the custom domain as `plonkr.dev`, complete DNS setup with your DNS provider using GitHub's current Pages instructions, then enable HTTPS. The tracked CNAME records the intended domain; DNS has not been changed by this scaffold.
+## Releases
 
-The workflow follows [GitHub's custom Pages workflow guidance](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages). With Actions deployment, configure the domain in repository settings; CNAME alone does not configure it.
+Plonkr uses CalVer: `YYYY.MM.PATCH`, with candidate versions such as `2026.11.0-beta.1`. Development happens on `develop`, candidates on `prerelease`, and stable releases on `main`. See [branches and release rules](BRANCHES.md).
 
-The Pegs branding direction is selected and the vector wordmark polish is complete. See [design files](docs/design/README.md) and [web implementation notes](docs/design/web-implementation.md). Runnable commands, platform support and installation instructions await implementation and verification; full v2026.11.0 scope remains open. A licence has not yet been selected.
+## License
+
+A license has not yet been selected.
