@@ -90,7 +90,7 @@ For accounts, repository access and unit templates, see [the application example
 
 ## Profiles and repository keys
 
-Named profiles live in `/etc/plonkr/` on Linux or `%ProgramData%\plonkr\` on Windows. Set `PLONK_PROFILES_DIR` or pass `--profiles-dir` to use another directory. Includes, snippets and templates load with the selected profile.
+Named profiles live in `/etc/plonkr/` on Linux or `%ProgramData%\plonkr\` on Windows. Set `PLONK_PROFILES_DIR` or pass `--profiles-dir` to use another directory. Includes, snippets and templates load with the selected profile. Every profile key is listed in the [profile reference](https://plonkr.dev/guide/reference.html).
 
 Repository keys reference an absolute file path on your controller. Plonkr preserves that file's bytes and installs a private copy directly as `~/.ssh/plonkr-REPOSITORY.key` for the target user. A different existing key triggers a warning and an approval prompt. `--auto-approve` allows unattended replacement; identical keys do not prompt. The beta requires unencrypted keys.
 

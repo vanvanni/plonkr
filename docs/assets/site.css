@@ -257,6 +257,14 @@ h2 { margin: 0; font-size: clamp(1.9rem, 3.6vw, 2.8rem); line-height: 1.12; font
 .article strong { color: var(--text); }
 .article pre { max-width: 100%; overflow-x: auto; padding: 20px; margin: 24px 0; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--bg-raised); font: 14px/24px var(--mono); color: var(--text); }
 .article pre code { font: inherit; }
+.article h3 { font-size: 1.15rem; letter-spacing: -.02em; margin: 32px 0 8px; scroll-margin-top: 88px; }
+/* HCL tokens, added by scripts/build.mjs */
+.article pre code.language-hcl { color: var(--secondary); }
+.hcl-b, .hcl-f { color: var(--accent); }
+.hcl-k { color: var(--text); }
+.hcl-s { color: #9fd8b4; }
+.hcl-n { color: #f0c38a; }
+.hcl-c { color: var(--muted); font-style: italic; }
 .article ol, .article ul { padding-left: 1.3rem; }
 .article li { margin: 8px 0; }
 .notice { display: flex; gap: 16px; padding: 16px 20px; border: 1px solid rgba(181,160,255,.3); background: var(--violet-deep); border-radius: 8px; margin: 24px 0; }

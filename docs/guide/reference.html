@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Profile reference — Plonkr</title>
+<meta name="description" content="Every key a Plonkr profile accepts, what it does and its default.">
+<meta name="theme-color" content="#0D0E12">
+<link rel="canonical" href="https://plonkr.dev/guide/reference.html">
+<link rel="icon" href="../assets/favicon.ico" sizes="48x48">
+<link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
+<link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
+<link rel="manifest" href="../assets/site.webmanifest">
+<link rel="stylesheet" href="../assets/site.css">
+<script src="../assets/site.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap bar">
+    <a class="logo" href="../index.html" aria-label="Plonkr home"><svg class="lockup" width="105" height="32" viewBox="0 0 105 32" role="img" aria-label="Plonkr"><circle class="peg" cx="8" cy="8" r="6"/><circle class="peg" cx="8" cy="24" r="6"/><circle class="peg" cx="24" cy="24" r="6"/><circle class="socket" cx="24" cy="8" r="4.5" fill="none" stroke-width="3"/><circle class="demo" cx="24" cy="8" r="6"/><path class="wm" d="M38 11H41V26H38ZM38 16.5A5.5 5.5 0 1 1 49 16.5A5.5 5.5 0 1 1 38 16.5ZM41 16.5A2.5 2.5 0 1 0 46 16.5A2.5 2.5 0 1 0 41 16.5ZM52 7H55V22H52ZM71 11H74V22H71ZM71 16A5 5 0 0 1 81 16V22H78V16A2 2 0 0 0 74 16ZM85 7H88V14L91 11H95.24L90.26 15.98L95.5 22H91.3L88 18.2V22H85ZM97 11H100V22H97ZM97 16A5 5 0 0 1 102 11H105V14H102A2 2 0 0 0 100 16Z"/><path class="wm-o" d="M58 17A5 5 0 1 1 68 17A5 5 0 1 1 58 17Z"/></svg></a>
+    <button class="menu-btn" type="button" aria-expanded="false" aria-controls="site-nav"><i aria-hidden="true"></i>Menu</button>
+    <nav class="nav" id="site-nav" aria-label="Main navigation">
+      <a href="../index.html#compare">The problem</a>
+      <a href="../index.html#how">How it goes</a>
+      <a href="../index.html#status">Status</a>
+      <a href="index.html" aria-current="page">Docs</a>
+    </nav>
+  </div>
+</header>
+<div class="wrap"><div class="docs-layout">
+<aside class="sidebar" aria-label="Documentation"><h4>Documentation</h4><nav><a href="index.html">Guide</a>
+<a href="profiles.html">Profiles and locations</a>
+<a href="configuration.html">Configuration and tasks</a>
+<a href="reference.html" aria-current="page">Profile reference</a>
+<a href="repositories.html">Repository SSH keys</a>
+<a href="execution.html">Execution and results</a>
+<a href="examples.html">Examples</a></nav></aside>
+<main class="article" id="main"><p class="kicker">docs / beta — no stable release yet</p><h1 id="overview">Profile reference</h1>
+<p class="lead">Every key a profile accepts, what it does, and its default.</p><p>Profiles are <a href="https://github.com/hashicorp/hcl">HCL</a> files ending in <code>.hcl</code>. This page describes the parser in the current beta. Values must be literals of the stated type: Plonkr does not convert between strings, numbers and bools, and unknown keys are rejected.</p>
+<pre><code class="language-hcl">name    = "Prepare application machine"
+include = ["base"]
+
+configuration { ... }      # at most one
+repository "your-repo" { ... } # any number
+unit "example.service" { ... } # any number
+tasks { ... }              # at most one</code></pre>
+<h2 id="top-level">Top-level keys</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>Key</th><th>Type</th><th>What it does</th></tr></thead>
+<tbody>
+<tr><td><code>name</code></td><td>string</td><td>Display name shown in previews and logs. Defaults to the filename without <code>.hcl</code>. Must not be blank when set.</td></tr>
+<tr><td><code>include</code></td><td>list of strings</td><td>Other profiles (by name, from the same profiles directory) to load into this one. See <a href="#include">includes</a>.</td></tr>
+<tr><td><code>configuration</code></td><td>block</td><td>Users, groups and timezone for the target. See <a href="#configuration">configuration</a>.</td></tr>
+<tr><td><code>repository "LABEL"</code></td><td>block</td><td>A Git checkout on the target. See <a href="#repository">repository</a>.</td></tr>
+<tr><td><code>unit "NAME"</code></td><td>block</td><td>A systemd unit rendered from a template. See <a href="#unit">unit</a>.</td></tr>
+<tr><td><code>tasks</code></td><td>block</td><td>The ordered work to run. See <a href="#tasks">tasks</a>.</td></tr>
+</tbody></table></div>
+<p>A profile must expand to between 1 and 10,000 steps. The legacy prototype blocks <code>script</code>, <code>scripts</code> and <code>account</code> are rejected with an error.</p>
+<h2 id="configuration">configuration</h2>
+<p>Declares the accounts and timezone the machine should have. Groups and users with <code>create = true</code> (the default) and the timezone become an automatic first task called <strong>Configuration</strong>, which runs before your own tasks in this order: groups, users, timezone.</p>
+<div class="table-wrap"><table>
+<thead><tr><th>Key</th><th>Type</th><th>What it does</th></tr></thead>
+<tbody>
+<tr><td><code>groups</code></td><td>list of objects</td><td>Linux groups. Fields below.</td></tr>
+<tr><td><code>users</code></td><td>list of objects</td><td>Linux user accounts. Fields below.</td></tr>
+<tr><td><code>timezone</code></td><td>string</td><td>IANA timezone such as <code>"Europe/Amsterdam"</code> or <code>"UTC"</code>, applied to the target. At most 128 characters.</td></tr>
+</tbody></table></div>
+<h3 id="group-fields">Group fields</h3>
+<div class="table-wrap"><table>
+<thead><tr><th>Field</th><th>Type</th><th>Default</th><th>What it does</th></tr></thead>
+<tbody>
+<tr><td><code>name</code></td><td>string</td><td>required</td><td>Group name: lowercase letters, digits, <code>_</code> and <code>-</code>, starting with a letter or <code>_</code>, at most 32 characters. <code>root</code> is not allowed.</td></tr>
+<tr><td><code>gid</code></td><td>integer</td><td>system picks</td><td>Fixed numeric group ID, from 1 to 4294967294. Must be unique within the profile.</td></tr>
+<tr><td><code>create</code></td><td>bool</td><td><code>true</code></td><td>Create the group in the Configuration task. With <code>false</code>, it is only created where a task calls <code>group("NAME")</code>.</td></tr>
+</tbody></table></div>
+<h3 id="user-fields">User fields</h3>
+<div class="table-wrap"><table>
+<thead><tr><th>Field</th><th>Type</th><th>Default</th><th>What it does</th></tr></thead>
+<tbody>
+<tr><td><code>name</code></td><td>string</td><td>required</td><td>User name, same rules as group names. <code>root</code> is not allowed.</td></tr>
+<tr><td><code>service</code></td><td>bool</td><td><code>false</code></td><td>Marks a service account. Changes the defaults for <code>home</code> and <code>shell</code>.</td></tr>
+<tr><td><code>home</code></td><td>string</td><td><code>/home/NAME</code>, or <code>/var/lib/NAME</code> for a service account</td><td>Home directory. Must be a clean absolute path.</td></tr>
+<tr><td><code>shell</code></td><td>string</td><td><code>/bin/bash</code>, or <code>/usr/sbin/nologin</code> for a service account</td><td>Login shell. Must be a clean absolute path.</td></tr>
+<tr><td><code>groups</code></td><td>list of strings</td><td>none</td><td>Supplementary groups. A user created automatically cannot list a group declared with <code>create = false</code>, because that group may not exist yet.</td></tr>
+<tr><td><code>public_keys</code></td><td>list of strings</td><td>none</td><td>SSH public keys allowed to log in as this user, one <code>authorized_keys</code> line each, without options.</td></tr>
+<tr><td><code>create</code></td><td>bool</td><td><code>true</code></td><td>Create the user in the Configuration task. With <code>false</code>, it is only created where a task calls <code>user("NAME")</code>.</td></tr>
+</tbody></table></div>
+<pre><code class="language-hcl">configuration {
+  groups = [
+    { name = "app", gid = 1001 },
+    { name = "reports", create = false },
+  ]
+  users = [
+    { name = "app", service = true, groups = ["app"] },
+    { name = "reporter", groups = ["reports"], create = false },
+  ]
+  timezone = "Europe/Amsterdam"
+}</code></pre>
+<h2 id="repository">repository</h2>
+<p>Declares a Git checkout on the target. The label names the repository: letters, digits, <code>.</code>, <code>_</code> and <code>-</code>, starting with a letter or digit. A task clones it with <code>repo("LABEL")</code>.</p>
+<div class="table-wrap"><table>
+<thead><tr><th>Key</th><th>Type</th><th>Default</th><th>What it does</th></tr></thead>
+<tbody>
+<tr><td><code>url</code></td><td>string</td><td>required</td><td>Clone URL: <code>ssh://</code>, <code>https://</code> or <code>git@host:path</code>. Must not contain a password, query or fragment.</td></tr>
+<tr><td><code>path</code></td><td>string</td><td>required</td><td>Absolute checkout path on the target.</td></tr>
+<tr><td><code>user</code></td><td>string</td><td>required</td><td>Target user that owns the checkout and runs Git.</td></tr>
+<tr><td><code>key</code></td><td>string</td><td>required for SSH URLs</td><td>Absolute path to the deploy key <em>on the machine running</em> <code>plonk</code> (a Windows path like <code>C:/Users/you/.ssh/key</code> is accepted). The file is copied unchanged to <code>~/.ssh/plonkr-LABEL.key</code> for <code>user</code>. Optional for public <code>https://</code> URLs.</td></tr>
+<tr><td><code>ref</code></td><td>string</td><td>remote default branch</td><td>Branch, tag or full commit hash to check out. Do not prefix it with <code>refs/</code>.</td></tr>
+<tr><td><code>known_hosts</code></td><td>list of strings</td><td>none</td><td><code>known_hosts</code> lines appended to the target user's <code>~/.ssh/known_hosts</code>. Plonkr's own clone accepts the server's host key automatically either way; see <a href="repositories.html#access">repository SSH keys</a>.</td></tr>
+</tbody></table></div>
+<pre><code class="language-hcl">repository "your-repo" {
+  url  = "git@example.com:team/your-repo.git"
+  path = "/srv/your-repo"
+  user = "app"
+  key  = "/home/operator/.ssh/your-repo"
+  ref  = "main"
+}</code></pre>
+<h2 id="unit">unit</h2>
+<p>Declares a systemd unit file. The label is the unit's filename and must end in a systemd suffix such as <code>.service</code>, <code>.timer</code> or <code>.socket</code>. A task installs it to <code>/etc/systemd/system/</code> with <code>unit("NAME")</code>.</p>
+<div class="table-wrap"><table>
+<thead><tr><th>Key</th><th>Type</th><th>Default</th><th>What it does</th></tr></thead>
+<tbody>
+<tr><td><code>source</code></td><td>string</td><td>required</td><td>Template path relative to the <code>files/</code> directory next to your profiles. It cannot leave that directory. UTF-8, at most 1 MiB.</td></tr>
+<tr><td><code>vars</code></td><td>object of strings</td><td>none</td><td>Values substituted into the template as <code>${name}</code>, using HCL template syntax.</td></tr>
+</tbody></table></div>
+<pre><code class="language-hcl">unit "example.service" {
+  source = "example.service.tmpl"
+  vars = {
+    user       = "app"
+    exec_start = "/usr/local/bin/example-server"
+  }
+}</code></pre>
+<h2 id="tasks">tasks</h2>
+<p>Holds named <code>task</code> blocks. Tasks run in ascending <code>order</code>, after the Configuration task. Within a task, all <code>setup</code> steps run before all <code>script</code> steps, regardless of where the keys appear.</p>
+<div class="table-wrap"><table>
+<thead><tr><th>Key</th><th>Type</th><th>Default</th><th>What it does</th></tr></thead>
+<tbody>
+<tr><td><code>order</code></td><td>integer</td><td>required</td><td>Position of the task, 0 or higher. Must be unique within the profile.</td></tr>
+<tr><td><code>bypass</code></td><td>bool</td><td><code>false</code></td><td>Skip this task and report it as bypassed. <code>plonk run --bypass "NAME"</code> does the same for a single run.</td></tr>
+<tr><td><code>setup</code></td><td>list</td><td>none</td><td>Managed operations on declared resources. See <a href="#functions">functions</a>.</td></tr>
+<tr><td><code>script</code></td><td>list</td><td>none</td><td>Shell commands as strings, plus <code>run()</code>, <code>flag()</code> and <code>log()</code>. Each string runs in its own remote shell, so a <code>cd</code> does not carry over.</td></tr>
+</tbody></table></div>
+<p>Each task needs at least one step in <code>setup</code> or <code>script</code>.</p>
+<h2 id="functions">Functions</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>Function</th><th>Where</th><th>What it does</th></tr></thead>
+<tbody>
+<tr><td><code>group("NAME")</code></td><td>setup</td><td>Create a group declared in <code>configuration</code>.</td></tr>
+<tr><td><code>user("NAME")</code></td><td>setup</td><td>Create a user declared in <code>configuration</code>.</td></tr>
+<tr><td><code>repo("LABEL")</code></td><td>setup</td><td>Install the deploy key and clone a declared repository. An existing matching checkout is verified, not updated.</td></tr>
+<tr><td><code>unit("NAME")</code></td><td>setup</td><td>Install a declared unit file.</td></tr>
+<tr><td><code>run("SNIPPET", ...)</code></td><td>script</td><td>Insert the commands of one or more <a href="#snippets">snippets</a>.</td></tr>
+<tr><td><code>flag("NAME", STEP, ...)</code></td><td>setup, script</td><td>Run the steps only when <code>--NAME</code> is passed to <code>plonk run</code>; otherwise they are reported as skipped. Names are lowercase with <code>-</code>. Built-in flag names such as <code>dry-run</code> are reserved.</td></tr>
+<tr><td><code>log("MESSAGE", "COLOR")</code></td><td>setup, script</td><td>Print a message locally. The optional color is one of <code>default</code>, <code>black</code>, <code>red</code>, <code>green</code>, <code>yellow</code>, <code>blue</code>, <code>magenta</code>, <code>cyan</code>, <code>white</code> or <code>gray</code>.</td></tr>
+</tbody></table></div>
+<pre><code class="language-hcl">tasks {
+  task "Deploy application" {
+    order  = 20
+    setup  = [repo("your-repo"), unit("example.service")]
+    script = [
+      run("inspect-machine"),
+      flag("vm", "echo running-in-a-vm"),
+      log("Application setup complete", "green"),
+    ]
+  }
+}</code></pre>
+<h2 id="snippets">Snippets</h2>
+<p>Snippets are reusable script steps. Put them in <code>.hcl</code> files in a <code>snippets/</code> directory next to your profiles; filenames do not matter, snippet names must be unique. A snippet's <code>commands</code> list accepts the same items as <code>script</code>, including nested <code>run()</code> calls. Cycles are rejected, and nesting is limited to 64 levels.</p>
+<pre><code class="language-hcl">snippet "inspect-machine" {
+  commands = [
+    "uname -a",
+    flag("verbose", "id"),
+  ]
+}</code></pre>
+<h2 id="include">Includes</h2>
+<p><code>include</code> loads other profiles into this one. Their Configuration tasks run first, then this profile's Configuration task, then the included tasks, then this profile's own tasks. Resources from an included profile stay private to it: refer to them from that profile's own tasks, not from the including profile. Include cycles are rejected.</p>
+<h2 id="layout">Directory layout</h2>
+<pre><code>profiles/
+├── app-machine.hcl
+├── base.hcl
+├── snippets/
+│   └── common.hcl
+└── files/
+    └── example.service.tmpl</code></pre><p>See <a href="profiles.html">profiles and locations</a> for where this directory lives, and <a href="examples.html">examples</a> for a complete profile.</p></main>
+<aside class="toc" aria-label="On this page"><h4>On this page</h4><nav><a href="#overview">Profile reference</a>
+<a href="#top-level">Top-level keys</a>
+<a href="#configuration">configuration</a>
+<a href="#repository">repository</a>
+<a href="#unit">unit</a>
+<a href="#tasks">tasks</a>
+<a href="#functions">Functions</a>
+<a href="#snippets">Snippets</a>
+<a href="#include">Includes</a>
+<a href="#layout">Directory layout</a></nav></aside>
+</div></div>
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="foot-base" style="margin-top:0;border-top:0;padding-top:0">
+      <span>plonkr · documentation</span>
+      <span>Pre-release docs · plonkr.dev</span>
+    </div>
+  </div>
+</footer>
+</body>
+</html>

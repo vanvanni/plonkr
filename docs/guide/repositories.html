@@ -32,6 +32,7 @@
 <aside class="sidebar" aria-label="Documentation"><h4>Documentation</h4><nav><a href="index.html">Guide</a>
 <a href="profiles.html">Profiles and locations</a>
 <a href="configuration.html">Configuration and tasks</a>
+<a href="reference.html">Profile reference</a>
 <a href="repositories.html" aria-current="page">Repository SSH keys</a>
 <a href="execution.html">Execution and results</a>
 <a href="examples.html">Examples</a></nav></aside>
@@ -40,7 +41,7 @@
 <h2 id="destination">Destination and identity</h2>
 <p>The key is installed directly as <code>~/.ssh/plonkr-REPOSITORY.key</code> for the selected target user, without an application subdirectory. Identical bytes require no approval. A different existing key triggers a warning and a default-no confirmation. Use <code>--auto-approve</code> to approve replacements without prompting; the warning is still printed. Declining or providing no answer preserves the existing key.</p><p>The private-key store and stored-key identifiers have been removed. Specify a local file path instead of importing a key into Plonkr.</p>
 <h2 id="declaration">Repository declaration</h2>
-<pre><code>repository "your-repo" {
+<pre><code class="language-hcl">repository "your-repo" {
   url  = "git@example.com:team/your-repo.git"
   path = "/srv/your-repo"
   user = "app"

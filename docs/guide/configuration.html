@@ -32,6 +32,7 @@
 <aside class="sidebar" aria-label="Documentation"><h4>Documentation</h4><nav><a href="index.html">Guide</a>
 <a href="profiles.html">Profiles and locations</a>
 <a href="configuration.html" aria-current="page">Configuration and tasks</a>
+<a href="reference.html">Profile reference</a>
 <a href="repositories.html">Repository SSH keys</a>
 <a href="execution.html">Execution and results</a>
 <a href="examples.html">Examples</a></nav></aside>
@@ -40,7 +41,7 @@
 <h2 id="creation">Automatic and explicit creation</h2>
 <p>Users and groups declared in <code>configuration</code> are automatically created on first run unless <code>create = false</code>. The same rule applies to both resource types.</p><p><code>create = false</code> means “do not create automatically.” An explicit setup call can still create that resource at the chosen point in a task. It does not mean that the resource can never be created.</p><p>Existing-resource checks and subsequent-run behavior still need to be defined. First-run creation does not imply a global “already configured” marker.</p>
 <h2 id="users">Users and groups</h2>
-<p>The draft user model includes a name, service-account designation, supplementary groups and SSH public keys. Groups can have a name and an optional numeric GID. Exact defaults and conflict rules remain under discussion.</p><pre><code>configuration {
+<p>The draft user model includes a name, service-account designation, supplementary groups and SSH public keys. Groups can have a name and an optional numeric GID. Exact defaults and conflict rules remain under discussion.</p><pre><code class="language-hcl">configuration {
   groups = [
     { name = "app" },
     { name = "reports", create = false },
@@ -51,7 +52,7 @@
   ]
 }</code></pre><p><strong>Proposed HCL example:</strong> <code>app</code> is automatically created. The <code>reports</code> group and <code>reporter</code> user wait for explicit setup operations. Public keys grant login access; repository private keys serve a different purpose.</p>
 <h2 id="tasks">Named tasks and phases</h2>
-<p>The draft proposes named tasks with a numeric <code>order</code>. A task can contain managed <code>setup</code> operations, a shell <code>script</code>, or both. Within a task, setup would run before script regardless of attribute placement.</p><pre><code>tasks {
+<p>The draft proposes named tasks with a numeric <code>order</code>. A task can contain managed <code>setup</code> operations, a shell <code>script</code>, or both. Within a task, setup would run before script regardless of attribute placement.</p><pre><code class="language-hcl">tasks {
   task "Prepare reports account" {
     order = 10
     setup = [group("reports"), user("reporter")]

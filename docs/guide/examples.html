@@ -32,13 +32,14 @@
 <aside class="sidebar" aria-label="Documentation"><h4>Documentation</h4><nav><a href="index.html">Guide</a>
 <a href="profiles.html">Profiles and locations</a>
 <a href="configuration.html">Configuration and tasks</a>
+<a href="reference.html">Profile reference</a>
 <a href="repositories.html">Repository SSH keys</a>
 <a href="execution.html">Execution and results</a>
 <a href="examples.html" aria-current="page">Examples</a></nav></aside>
 <main class="article" id="main"><p class="kicker">docs / beta — no stable release yet</p><h1 id="overview">A small setup profile</h1>
 <p class="lead">Automatic accounts, an explicitly created account, and a repository checkout.</p><div class="notice"><p><strong>Design example:</strong> this uses the proposed HCL configuration and task structure. It is not runnable with the current prototype. Exact grammar, baseline ordering and task failure rules remain under discussion.</p></div>
 <h2 id="profile">Proposed profile</h2>
-<pre><code>name = "Prepare application machine"
+<pre><code class="language-hcl">name = "Prepare application machine"
 
 configuration {
   groups = [
@@ -74,7 +75,7 @@ tasks {
 <h2 id="walkthrough">How to read it</h2>
 <ol><li>The <code>app</code> group and user opt into automatic creation by omitting <code>create = false</code>.</li><li>The <code>reports</code> group and <code>reporter</code> user are created explicitly in the first task.</li><li>The second task requests repository setup as <code>app</code>, using the exact key file from the controller.</li><li>In the proposed phase model, the shell message runs only after that task's setup phase succeeds.</li></ol><p>The example assumes the proposed groups-before-users baseline and tasks in ascending order. Those ordering details still need approval. It does not install Git, grant access at the repository provider, set repository host trust, or make <code>/srv</code> writable for <code>app</code>. Those prerequisites must be prepared for an actual acceptance run.</p>
 <h2 id="snippets">Reusable shell work</h2>
-<p>The prototype supports named snippets referenced through <code>run()</code>. Keeping that capability in the script phase is proposed:</p><pre><code>snippet "inspect-machine" {
+<p>The prototype supports named snippets referenced through <code>run()</code>. Keeping that capability in the script phase is proposed:</p><pre><code class="language-hcl">snippet "inspect-machine" {
   commands = ["uname -a", "id"]
 }
 
