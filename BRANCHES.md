@@ -25,8 +25,8 @@ Ordinary branch pushes run checks; they do not create release tags or releases.
 
 The repository was bootstrapped with an empty initial commit on `main`, followed
 by the current implementation on `prerelease`. `develop` starts from that candidate.
-The initial empty `main` baseline is not a stable software release. A separate
-website-only commit makes the beta-status site publishable from `main` before
+The initial empty `main` baseline is not a stable software release. A future
+website-only commit can make the beta-status site publishable from `main` before
 stable CLI code is promoted.
 
 ## Workflows
@@ -65,8 +65,7 @@ branch protections and release publication are separate from these workflow file
 
 The main domain can explain the beta before a stable CLI is released. Promote
 only website files and its workflow to `main` for that purpose, keeping unfinished
-CLI code on `prerelease`. See [Pages setup](PAGES.md) for this bootstrap and the
-independent prerelease site.
+CLI code on `prerelease`. See [Pages setup](PAGES.md) for this bootstrap.
 
 The current coverage record is in [the acceptance suite](acceptance/README.md).
 Linux arm64 is cross-built; it has not been exercised by that amd64 acceptance run.

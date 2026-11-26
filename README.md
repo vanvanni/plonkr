@@ -35,8 +35,7 @@ ordinary Go tests stay fast and do not start VMs.
 
 ## GitHub Pages
 
-See [domain and preview-site setup](PAGES.md) for `plonkr.dev` and
-`prerelease.plonkr.dev`, including DNS records and repository settings.
+See [domain setup](PAGES.md) for `plonkr.dev`, including DNS records and repository settings.
 
 Branch roles, checks and release tagging are described in [Branches and releases](BRANCHES.md).
 
