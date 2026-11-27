@@ -7,12 +7,12 @@
 # against the release's SHA256SUMS before anything is installed.
 #
 # Choose a version or folder with environment variables, then run the line above:
-#   $env:PLONK_VERSION = '2026.11.0-beta.1'    # default: newest published release, prereleases included
+#   $env:PLONK_VERSION = '2026.11.0-beta.2'    # default: newest published release, prereleases included
 #   $env:PLONK_INSTALL_DIR = 'D:\Tools\plonk'  # default: %LOCALAPPDATA%\Programs\plonk
 #   $env:PLONK_NO_PATH = '1'                   # do not add the folder to your user PATH
 #   $env:PLONK_UNINSTALL = '1'                 # remove plonk.exe and its PATH entry instead
 #
-# Or save the script and pass parameters:  .\install.ps1 -Version 2026.11.0-beta.1
+# Or save the script and pass parameters:  .\install.ps1 -Version 2026.11.0-beta.2
 #
 # PLONK_API_URL and PLONK_DOWNLOAD_URL replace the GitHub endpoints, for a
 # mirror or for testing.

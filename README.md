@@ -29,7 +29,7 @@
 
 Plonkr automates the setup work that comes after creating a machine. Describe users, groups, repositories and ordered tasks in a profile, then run it against a host you can already reach over SSH. The command is **plonk**.
 
-**Beta — no stable release yet.** The current version is **2026.11.0-beta.1**. Install it with the scripts below or build from source. Interfaces and behavior may change before stable.
+**Beta — no stable release yet.** The current version is **2026.11.0-beta.2**. Install it with the scripts below or build from source. Interfaces and behavior may change before stable.
 
 ## What you can do
 
@@ -148,7 +148,7 @@ The website and public docs live in `docs/`. Use `npm run check` to validate the
 
 ## Releases
 
-Plonkr uses CalVer: `YYYY.MM.PATCH`, with candidate versions such as `2026.11.0-beta.1`. Development happens on `develop`, candidates on `prerelease`, and stable releases on `main`. See [branches and release rules](BRANCHES.md).
+Plonkr uses CalVer: `YYYY.MM.PATCH`, with candidate versions such as `2026.11.0-beta.2`. Development happens on `develop`, candidates on `prerelease`, and stable releases on `main`. See [branches and release rules](BRANCHES.md).
 
 ## License
 
