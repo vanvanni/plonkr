@@ -10,6 +10,7 @@ Current identity: **Pegs**, selected by the owner, with the final custom vector 
 | Vector marks, wordmark and lockups | [assets/identity/](assets/identity/) |
 | Reproducible design and asset build | [create-identity.mjs](create-identity.mjs), [build-brand-assets.mjs](build-brand-assets.mjs) |
 | Web behaviour and regeneration | [web-implementation.md](web-implementation.md) |
+| Terminal screenshots and promo (proposal) | [terminal/](terminal/README.md), exports in [exports/terminal/](exports/terminal/). Editable copy: the last three frames of the Figcraft file, added by [terminal/figcraft.mjs](terminal/figcraft.mjs) |
 | Website | [landing page](../index.html), [guide](../guide/index.html) |
 
 This directory contains only the current standard. Superseded explorations, option sheets, and temporary run files have been removed.

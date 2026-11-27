@@ -1,0 +1,19 @@
+{
+  "_comment": "Scripted target output for the terminal screenshots, keyed by step text. 'work' is the number of 100 ms spinner frames before the output appears. The messages for the user and timezone steps are the ones the real provisioning scripts print. Everything else is illustrative.",
+  "steps": {
+    "user app": { "work": 3, "lines": ["User app ready"] },
+    "timezone Europe/Amsterdam": { "work": 2, "lines": ["Timezone set to Europe/Amsterdam"] },
+    "./scripts/install-go.sh 1.26.0": { "work": 8, "lines": [] },
+    "/usr/local/go/bin/go version": { "work": 2, "lines": ["go version go1.26.0 linux/amd64"] },
+    "git clone https://git.example.com/app.git /srv/app": {
+      "work": 4,
+      "lines": ["Cloning into '/srv/app'...", "remote: Enumerating objects: 148, done.", "Receiving objects: 100% (148/148), 212.40 KiB, done."]
+    },
+    "git -C /srv/app log -1 --oneline": { "work": 1, "lines": ["9f3c2ab Add health endpoint"] },
+    "cd /srv/app && /usr/local/go/bin/go build -o /usr/local/bin/app .": { "work": 7, "lines": [] },
+    "systemctl enable --now app": { "work": 2, "lines": [] }
+  },
+  "stills": {
+    "running": "Receiving objects: 100%"
+  }
+}

@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-label="Plonkr: make every new machine yours">
+<style>
+text{font:14px "JetBrains Mono","Cascadia Mono","SF Mono",Menlo,Consolas,"Liberation Mono",monospace;fill:#F3F2F7;white-space:pre;font-variant-ligatures:none}
+.title{font-size:12px;fill:#8C8B9D}
+.h{font:650 60px/1 Inter,ui-sans-serif,system-ui,"Segoe UI",Roboto,sans-serif;letter-spacing:-2.6px}
+.p{font:400 22px/1 Inter,ui-sans-serif,system-ui,"Segoe UI",Roboto,sans-serif;fill:#B0AFBF}
+.s{font:400 13px "JetBrains Mono","Cascadia Mono",Consolas,monospace;fill:#8C8B9D;letter-spacing:.4px}
+</style>
+<defs>
+<pattern id="pegs" width="28" height="28" patternUnits="userSpaceOnUse"><circle cx="14" cy="14" r="1.2" fill="#B0AFBF" fill-opacity=".34"/></pattern>
+<radialGradient id="fade" cx=".85" cy=".25" r=".8"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#000"/></radialGradient>
+<mask id="pegmask"><rect width="1600" height="900" fill="url(#fade)"/></mask>
+<filter id="shadow" x="-20%" y="-20%" width="140%" height="160%" color-interpolation-filters="sRGB">
+<feDropShadow dx="0" dy="32" stdDeviation="28" flood-color="#000" flood-opacity=".65"/>
+<feDropShadow dx="0" dy="0" stdDeviation="44" flood-color="#B5A0FF" flood-opacity=".12"/>
+</filter>
+</defs>
+<rect width="1600" height="900" fill="#0D0E12"/>
+<rect width="1600" height="900" fill="url(#pegs)" mask="url(#pegmask)" opacity=".55"/>
+<svg x="96" y="96" width="210" height="64" viewBox="0 0 420 128"><circle cx="32" cy="32" r="24" fill="#B5A0FF"/><circle cx="32" cy="96" r="24" fill="#B5A0FF"/><circle cx="96" cy="96" r="24" fill="#B5A0FF"/><circle cx="96" cy="32" r="18" fill="none" stroke="#8A74E0" stroke-width="12"/><path fill="#F3F2F7" d="M152 44H164V104H152ZM152 66A22 22 0 1 1 196 66A22 22 0 1 1 152 66ZM164 66A10 10 0 1 0 184 66A10 10 0 1 0 164 66ZM208 28H220V88H208ZM284 44H296V88H284ZM284 64A20 20 0 0 1 324 64V88H312V64A8 8 0 0 0 296 64ZM340 28H352V56L364 44H380.96L361.04 63.92L382 88H365.2L352 72.8V88H340ZM388 44H400V88H388ZM388 64A20 20 0 0 1 408 44H420V56H408A8 8 0 0 0 400 64Z"/><path fill="#B5A0FF" d="M232 68A20 20 0 1 1 272 68A20 20 0 1 1 232 68Z"/></svg>
+<text class="h" x="96" y="330">Make every</text>
+<text class="h" x="96" y="398">new machine</text>
+<text class="h" x="96" y="466" style="fill:#B5A0FF">yours.</text>
+<text class="p" x="96" y="540">Configure existing machines over SSH,</text>
+<text class="p" x="96" y="572">with a little less ceremony.</text>
+<text class="s" x="96" y="828">BETA · NO STABLE RELEASE YET · PLONKR.DEV</text>
+<g transform="translate(640 262)" filter="url(#shadow)"><clipPath id="poster-win"><rect width="888" height="424" rx="12"/></clipPath>
+<rect width="888" height="424" rx="12" fill="#12131A"/>
+<g clip-path="url(#poster-win)"><rect width="888" height="40" fill="#17181F"/><rect y="40" width="888" height="1" fill="#24252F"/></g>
+<rect x=".5" y=".5" width="887" height="423" rx="11.5" fill="none" stroke="#30313D"/>
+<circle cx="20" cy="20" r="4" fill="#30313D"/><circle cx="36" cy="20" r="4" fill="#30313D"/><circle cx="52" cy="20" r="4" fill="#30313D"/>
+<text x="76" y="24" class="title">plonk</text>
+<text y="75" xml:space="preserve"><tspan x="24" fill="#875fff" font-weight="700">plonk</tspan><tspan x="74.4">· lab-ct · Web machine · Executing</tspan></text>
+
+<text y="115" xml:space="preserve"><tspan x="24" fill="#5fd787">✓</tspan><tspan x="40.8">[config] Configuration</tspan><tspan x="242.4" fill="#767676">2 completed</tspan></text>
+<text y="135" xml:space="preserve"><tspan x="24" fill="#5fd787">✓</tspan><tspan x="40.8">[10] Install Go</tspan><tspan x="183.6" fill="#767676">2 completed</tspan></text>
+<text y="155" xml:space="preserve"><tspan x="24" fill="#875fff">⠏</tspan><tspan x="40.8">[20] Fetch application</tspan><tspan x="242.4" fill="#767676">2 pending</tspan></text>
+<text y="175" xml:space="preserve"><tspan x="24" fill="#767676">○</tspan><tspan x="40.8">[30] Build and start</tspan><tspan x="225.6" fill="#767676">2 pending</tspan></text>
+
+<text y="215" xml:space="preserve"><tspan x="24" fill="#875fff">$</tspan><tspan x="40.8">git clone https://git.example.com/app.git /srv/app</tspan></text>
+<text y="235" xml:space="preserve"><tspan x="24">User app ready</tspan></text>
+<text y="255" xml:space="preserve"><tspan x="24">Timezone set to Europe/Amsterdam</tspan></text>
+<text y="275" xml:space="preserve"><tspan x="24">go version go1.26.0 linux/amd64</tspan></text>
+<text y="295" xml:space="preserve"><tspan x="24">Cloning into '/srv/app'...</tspan></text>
+<text y="315" xml:space="preserve"><tspan x="24">remote: Enumerating objects: 148, done.</tspan></text>
+<text y="335" xml:space="preserve"><tspan x="24">Receiving objects: 100% (148/148), 212.40 KiB, done.</tspan></text>
+
+<text y="375" xml:space="preserve"><tspan x="24" fill="#767676">q / ctrl+c  cancel · no rollback</tspan></text>
+</g>
+</svg>

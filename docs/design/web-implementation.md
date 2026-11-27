@@ -151,6 +151,10 @@ implementation status. The approved Pegs geometry, palette and wordmark are
 unchanged. Neither DNS nor remote deployment has been performed. New browser/layout
 verification has not been performed for these notices.
 
+### Terminal screens and promo, 2026-11-27 (proposal)
+
+Real `plonk` output, recorded with scripted target output, as stills, a looping SMIL animation and a poster, with an editable copy in Figcraft. See [terminal/README.md](terminal/README.md). None of it is on the site, and the landing page's illustrative terminal is unchanged. The real UI's green ticks disagree with the "violet never means success" rule; that is recorded there as an open decision. Verified: PNGs and several time offsets of the animation inspected in headless Chromium, the Figcraft frames exported and inspected, existing Figcraft frames unchanged. Not verified: Safari, Firefox, devices, an embedded page, or the loop's pause behaviour (it has none).
+
 ### Public guide expansion, 2026-11-26
 
 The guide now has six static pages: overview, profile locations, configuration

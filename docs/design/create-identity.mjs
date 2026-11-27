@@ -6,6 +6,8 @@
 // Put figcraft-cli on PATH, or set FIGCRAFT_CLI to its installed executable.
 //   figcraft-cli export docs/design/plonkr-identity.figcraft --out docs/design/exports/identity --format png
 //   node docs/design/build-brand-assets.mjs
+// This builds a new document. The terminal frames (Terminal screens, Promo poster, Promo storyboard) are not part of it;
+// run `node docs/design/terminal/figcraft.mjs` afterwards to add them back.
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import * as M from './mark.mjs';
