@@ -37,7 +37,7 @@
 <a href="execution.html" aria-current="page">Execution and results</a>
 <a href="examples.html">Examples</a></nav></aside>
 <main class="article" id="main"><p class="kicker">docs / beta — no stable release yet</p><h1 id="overview">Execution and results</h1>
-<p class="lead">Understand what will run and what actually happened.</p><p>The prototype expands profiles and snippets before executing a sequential plan over SSH. The new interface aims to report each action consistently in the terminal screen, plain output and saved summary.</p>
+<p class="lead">Understand what will run and what actually happened.</p><p>Plonkr expands profiles and snippets before executing a sequential plan over SSH. It checks <a href="reference.html#arguments">argument contracts</a>, collects all profile answers, then validates the fully resolved plan before connecting. Supply repeatable <code>--arg name=value</code> options for unattended runs. Dry runs also resolve inputs; <code>validate</code> never prompts and reports unresolved required inputs.</p>
 <h2 id="preview">Preview before applying</h2>
 <p>The prototype's dry run validates and expands configuration without connecting to SSH or reading repository key files. It renders unit templates and shows selected and skipped work. A preview is a plan, not evidence that credentials, privileges or remote dependencies will work.</p><p>The final Plonkr preview command and flags are not settled yet.</p>
 <h2 id="results">Result meanings</h2>

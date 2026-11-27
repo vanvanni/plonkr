@@ -37,7 +37,7 @@
 <a href="execution.html">Execution and results</a>
 <a href="examples.html">Examples</a></nav></aside>
 <main class="article" id="main"><p class="kicker">docs / beta — no stable release yet</p><h1 id="overview">Profile reference</h1>
-<p class="lead">Every key a profile accepts, what it does, and its default.</p><p>Profiles are <a href="https://github.com/hashicorp/hcl">HCL</a> files ending in <code>.hcl</code>. This page describes the parser in the current beta. Values must be literals of the stated type: Plonkr does not convert between strings, numbers and bools, and unknown keys are rejected.</p>
+<p class="lead">Every key a profile accepts, what it does, and its default.</p><p>Profiles are <a href="https://github.com/hashicorp/hcl">HCL</a> files ending in <code>.hcl</code>. Values accept literals and declared <code>args.NAME</code> inputs of the stated type. Plonkr does not convert configuration values between strings, numbers and bools, and unknown keys are rejected.</p>
 <pre><code class="language-hcl">name    = "Prepare application machine"
 include = ["base"]
 
@@ -51,12 +51,63 @@ tasks { ... }              # at most one</code></pre>
 <tbody>
 <tr><td><code>name</code></td><td>string</td><td>Display name shown in previews and logs. Defaults to the filename without <code>.hcl</code>. Must not be blank when set.</td></tr>
 <tr><td><code>include</code></td><td>list of strings</td><td>Other profiles (by name, from the same profiles directory) to load into this one. See <a href="#include">includes</a>.</td></tr>
+<tr><td><code>arguments</code></td><td>block</td><td>Typed inputs, prompts, defaults and validation rules. See <a href="#arguments">arguments</a>.</td></tr>
+<tr><td><code>include "NAME"</code></td><td>block</td><td>Include a profile with explicit argument forwarding. Use blocks or the legacy include list.</td></tr>
 <tr><td><code>configuration</code></td><td>block</td><td>Users, groups and timezone for the target. See <a href="#configuration">configuration</a>.</td></tr>
 <tr><td><code>repository "LABEL"</code></td><td>block</td><td>A Git checkout on the target. See <a href="#repository">repository</a>.</td></tr>
 <tr><td><code>unit "NAME"</code></td><td>block</td><td>A systemd unit rendered from a template. See <a href="#unit">unit</a>.</td></tr>
 <tr><td><code>tasks</code></td><td>block</td><td>The ordered work to run. See <a href="#tasks">tasks</a>.</td></tr>
 </tbody></table></div>
 <p>A profile must expand to between 1 and 10,000 steps. The legacy prototype blocks <code>script</code>, <code>scripts</code> and <code>account</code> are rejected with an error.</p>
+<h2 id="arguments">Arguments</h2>
+<p>Declare profile inputs in one <code>arguments</code> block. Only the selected profile asks questions. Each snippet and included profile has its own input scope; callers forward values explicitly. All contracts are checked before questions, and the complete resolved plan is validated before deploy keys, execution logs or SSH.</p>
+<pre><code class="language-hcl">arguments {
+  argument "app_name" {
+    type   = string
+    prompt = "Application name"
+    validation {
+      pattern = "^[a-z][a-z0-9-]{0,31}$"
+      message = "Use a lowercase application name, at most 32 characters."
+    }
+  }
+  argument "port" {
+    type    = integer
+    default = 8080
+    validation {
+      min = 1024
+      max = 65535
+    }
+  }
+}
+
+tasks {
+  task "Show inputs" {
+    order = 10
+    script = [run("show-app-inputs", {name = args.app_name, port = args.port})]
+  }
+}</code></pre>
+<div class="table-wrap"><table>
+<thead><tr><th>Field</th><th>Meaning</th></tr></thead><tbody>
+<tr><td><code>argument "NAME"</code></td><td>Unique input name matching <code>[a-z][a-z0-9_]*</code>, referenced as <code>args.NAME</code>.</td></tr>
+<tr><td><code>type</code></td><td>Required: <code>string</code>, <code>integer</code> (signed 64-bit whole number), or <code>bool</code>.</td></tr>
+<tr><td><code>prompt</code></td><td>Profile-only question text; defaults to the argument name.</td></tr>
+<tr><td><code>default</code></td><td>Profile-only fallback, checked against the type and every validation rule. Without one, an answer is required.</td></tr>
+<tr><td><code>validation</code></td><td>Repeatable blocks. Every rule must pass; optional <code>message</code> replaces that block's error text.</td></tr>
+</tbody></table></div>
+<div class="table-wrap"><table>
+<thead><tr><th>Type</th><th>Rules</th></tr></thead><tbody>
+<tr><td><code>string</code></td><td><code>pattern</code> (Go regular expression), <code>choices</code> (non-empty string list), <code>min_length</code>, <code>max_length</code> (Unicode code points).</td></tr>
+<tr><td><code>integer</code></td><td><code>min</code>, <code>max</code> (inclusive), <code>choices</code> (non-empty integer list).</td></tr>
+<tr><td><code>bool</code></td><td>Type check; no additional rules.</td></tr>
+</tbody></table></div>
+<p>Strings must be non-blank UTF-8 text, at most 64 KiB, without NUL bytes. Nulls, incompatible rules, malformed patterns and reversed ranges are rejected. Patterns match substrings unless anchored with <code>^</code> and <code>$</code>. Validation is local and never executes commands or queries the target.</p>
+<p>At a terminal, unanswered inputs are requested in declaration order, including defaults (Enter accepts the displayed value). Invalid answers are requested again; EOF or cancellation stops before SSH. Supply repeatable <code>--arg name=value</code> options to skip questions. Without a terminal, defaults apply and missing required inputs fail. Unknown or repeated names are errors. Only the first <code>=</code> separates name and value. Boolean answers use <code>true</code>/<code>false</code>. <code>--auto-approve</code> does not answer questions.</p>
+<pre><code class="language-sh">plonk validate ./examples/arguments.hcl --arg app_name=api --arg port=9000
+plonk run my-host ./examples/arguments.hcl --arg app_name=api --dry-run</code></pre>
+<p><code>validate</code> never prompts. With missing required inputs it reports checked argument contracts and unresolved names; this does not mean the profile is ready to execute. Supply values for a fully resolved validation. A dry run collects and validates inputs like a real run, without SSH.</p>
+<p>Use inputs in configuration values, repository fields, unit <code>vars</code> and task bodies, including locks. Block labels, include/snippet/flag names and unit <code>source</code> remain static. Use <code>shellquote(args.name)</code> for one complete POSIX shell argument, without adding surrounding quotes. Raw interpolation does not provide shell quoting. Rendered values can appear in previews, commands, logs and target output; inputs are not a secret store.</p>
+<p>HCL preserves the type of a single-value interpolation: <code>"${args.port}"</code> remains numeric when <code>port</code> is an integer. Unit <code>vars</code> require strings. Interpolate numbers into complete strings, for example <code>exec_start = "/usr/bin/server --port ${args.port}"</code>.</p>
+<p>Verified on Ubuntu 24.04 with Go 1.26.0: all 17 Multipass scenario groups and Linux race tests pass, including real terminal retries, defaults, cancellation, TUI startup after questions and literal shell quoting. Native Windows console interaction and SSH transport remain unverified.</p>
 <h2 id="configuration">configuration</h2>
 <p>Declares the accounts and timezone the machine should have. Groups and users with <code>create = true</code> (the default) and the timezone become an automatic first task called <strong>Configuration</strong>, which runs before your own tasks in this order: groups, users, timezone.</p>
 <div class="table-wrap"><table>
@@ -178,7 +229,9 @@ tasks { ... }              # at most one</code></pre>
 <tr><td><code>repo("LABEL")</code></td><td>setup</td><td>Install the deploy key and clone a declared repository. An existing matching checkout is verified, not updated.</td></tr>
 <tr><td><code>unit("NAME")</code></td><td>setup</td><td>Install a declared unit file.</td></tr>
 <tr><td><code>run("SNIPPET", ...)</code></td><td>script</td><td>Insert the commands of one or more <a href="#snippets">snippets</a>.</td></tr>
-<tr><td><code>flag("NAME", STEP, ...)</code></td><td>setup, script</td><td>Run the steps only when <code>--NAME</code> is passed to <code>plonk run</code>; otherwise they are reported as skipped. Names are lowercase with <code>-</code>. Names of built-in options are reserved and rejected when the profile is loaded: <code>help</code>, <code>tty</code>, <code>dry-run</code>, <code>no-tui</code>, <code>profiles-dir</code>, <code>bypass</code>, <code>version</code>, <code>auto-approve</code> and <code>force</code>.</td></tr>
+<tr><td><code>run("SNIPPET", {input = value})</code></td><td>script</td><td>Call one snippet with explicit inputs; every declared input must be passed.</td></tr>
+<tr><td><code>shellquote(value)</code></td><td>value expressions</td><td>Quote a string as one complete POSIX shell argument. Do not add surrounding quotes.</td></tr>
+<tr><td><code>flag("NAME", STEP, ...)</code></td><td>setup, script</td><td>Run the steps only when <code>--NAME</code> is passed to <code>plonk run</code>; otherwise they are reported as skipped. Names are lowercase with <code>-</code>. Names of built-in options are reserved and rejected when the profile is loaded: <code>help</code>, <code>tty</code>, <code>dry-run</code>, <code>no-tui</code>, <code>profiles-dir</code>, <code>bypass</code>, <code>version</code>, <code>auto-approve</code>, <code>force</code> and <code>arg</code>.</td></tr>
 <tr><td><code>log("MESSAGE", "COLOR")</code></td><td>setup, script</td><td>Print a message locally. The optional color is one of <code>default</code>, <code>black</code>, <code>red</code>, <code>green</code>, <code>yellow</code>, <code>blue</code>, <code>magenta</code>, <code>cyan</code>, <code>white</code> or <code>gray</code>.</td></tr>
 </tbody></table></div>
 <pre><code class="language-hcl">tasks {
@@ -200,9 +253,27 @@ tasks { ... }              # at most one</code></pre>
     flag("verbose", "id"),
   ]
 }</code></pre>
+<p>Snippets can declare an <code>arguments</code> block with the same types and rules, but no <code>prompt</code> or <code>default</code>. Every input must be passed explicitly at every invocation, including nested calls. Snippets cannot read the caller's inputs implicitly. Unknown names, wrong types, missing inputs and undeclared references fail preflight, including in bypassed or flag-disabled tasks. Each call renders with its own values.</p>
+<pre><code class="language-hcl">snippet "show-app-inputs" {
+  arguments {
+    argument "name" { type = string }
+    argument "port" {
+      type = integer
+      validation {
+        min = 1024
+        max = 65535
+      }
+    }
+  }
+  commands = ["printf '%s:%s' ${shellquote(args.name)} ${args.port}"]
+}</code></pre>
 <h2 id="include">Includes</h2>
 <p><code>include</code> loads other profiles into this one. Their Configuration tasks run first, then this profile's Configuration task, then the included tasks, then this profile's own tasks. Resources from an included profile stay private to it: refer to them from that profile's own tasks, not from the including profile. Include cycles are rejected.</p>
 <p>A profile is merged once, however many include paths reach it. If <code>left</code> and <code>right</code> both include <code>base</code>, <code>base</code> runs once, at the position where it is first reached (depth first, in the order listed). Listing the same profile twice in one <code>include</code> list is an error, because it is almost always a typo. A locked task in a shared profile is therefore valid.</p>
+<p>Forward values to an included profile with a labeled include block. Included profiles use supplied values or their own defaults and never prompt independently. Use either blocks or the legacy list in one profile. Shared profiles are merged once when their effective inputs match; differing inputs are a preflight error.</p>
+<pre><code class="language-hcl">include "base" {
+  arguments = { environment = args.environment }
+}</code></pre>
 <h2 id="layout">Directory layout</h2>
 <pre><code>profiles/
 ├── app-machine.hcl
@@ -213,6 +284,7 @@ tasks { ... }              # at most one</code></pre>
     └── example.service.tmpl</code></pre><p>See <a href="profiles.html">profiles and locations</a> for where this directory lives, and <a href="examples.html">examples</a> for a complete profile.</p></main>
 <aside class="toc" aria-label="On this page"><h4>On this page</h4><nav><a href="#overview">Profile reference</a>
 <a href="#top-level">Top-level keys</a>
+<a href="#arguments">Arguments</a>
 <a href="#configuration">configuration</a>
 <a href="#repository">repository</a>
 <a href="#unit">unit</a>

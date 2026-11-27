@@ -17,6 +17,7 @@ const maxProfileFileSize = 1 << 20
 
 func newValidateCmd() *cobra.Command {
 	var profilesDir string
+	var arguments []string
 	cmd := &cobra.Command{
 		Use:   "validate PROFILE",
 		Short: "Validate a profile and print its expanded plan",
@@ -26,7 +27,25 @@ func newValidateCmd() *cobra.Command {
 			if flagChanged && strings.TrimSpace(profilesDir) == "" {
 				return errors.New("--profiles-dir must not be empty")
 			}
-			plan, err := loadProfileRef(args[0], profilesDir, flagChanged)
+			program, err := loadProgramRef(args[0], profilesDir, flagChanged)
+			if err != nil {
+				return err
+			}
+			values, err := parseArgumentOptions(program, arguments)
+			if err != nil {
+				return err
+			}
+			missing := []string{}
+			for _, a := range program.Arguments() {
+				if _, ok := values[a.Name]; !ok && a.Default == nil {
+					missing = append(missing, a.Name)
+				}
+			}
+			if len(missing) > 0 {
+				_, err := fmt.Fprintf(cmd.OutOrStdout(), "Argument contracts checked. Unresolved inputs: %s\nSupply --arg name=value to validate the fully resolved plan.\n", strings.Join(missing, ", "))
+				return err
+			}
+			plan, err := program.Bind(values)
 			if err != nil {
 				return err
 			}
@@ -34,10 +53,19 @@ func newValidateCmd() *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&profilesDir, "profiles-dir", "", "Directory containing profiles, snippets, and unit files")
+	cmd.Flags().StringArrayVar(&arguments, "arg", nil, "Supply a profile argument as name=value (repeatable)")
 	return cmd
 }
 
 func loadProfileRef(ref, profilesDir string, explicitDir bool) (*profile.Plan, error) {
+	program, err := loadProgramRef(ref, profilesDir, explicitDir)
+	if err != nil {
+		return nil, err
+	}
+	return program.Bind(nil)
+}
+
+func loadProgramRef(ref, profilesDir string, explicitDir bool) (*profile.Program, error) {
 	if explicitDir {
 		base, err := filepath.Abs(profilesDir)
 		if err != nil {
@@ -51,20 +79,20 @@ func loadProfileRef(ref, profilesDir string, explicitDir bool) (*profile.Plan, e
 			return nil, fmt.Errorf("profiles directory %q is not a directory", base)
 		}
 		if isExplicitPath(ref) {
-			return parseProfileFileWithBase(ref, base)
+			return prepareProfileFile(ref, base)
 		}
-		return profile.LoadProfile(ref, base)
+		return profile.PrepareProfile(ref, base)
 	}
 
 	if isExplicitPath(ref) {
-		return parseProfileFile(ref)
+		return prepareProfileFile(ref, filepath.Dir(ref))
 	}
 	if strings.HasSuffix(ref, ".hcl") {
 		if info, err := os.Lstat(ref); err == nil {
 			if !info.Mode().IsRegular() {
 				return nil, fmt.Errorf("profile %q must be a regular file", ref)
 			}
-			return parseProfileFile(ref)
+			return prepareProfileFile(ref, filepath.Dir(ref))
 		} else if !os.IsNotExist(err) {
 			return nil, fmt.Errorf("inspect profile %q: %w", ref, err)
 		}
@@ -74,7 +102,15 @@ func loadProfileRef(ref, profilesDir string, explicitDir bool) (*profile.Plan, e
 	if err != nil {
 		return nil, err
 	}
-	return profile.LoadProfile(ref, base)
+	return profile.PrepareProfile(ref, base)
+}
+
+func prepareProfileFile(path, base string) (*profile.Program, error) {
+	source, err := readRegularProfile(path)
+	if err != nil {
+		return nil, err
+	}
+	return profile.Prepare(source, path, base)
 }
 
 func isExplicitPath(ref string) bool {

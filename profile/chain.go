@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+
+	"github.com/zclconf/go-cty/cty"
 )
 
 const (
@@ -17,6 +19,8 @@ const (
 )
 
 type profileLoader struct {
+	program    *Program
+	bindings   map[string]cty.Value
 	base       string
 	root       *os.Root
 	profiles   map[string]compiledProfile
@@ -36,14 +40,11 @@ type compiledProfile struct {
 
 // LoadProfile reads a named profile beneath base and compiles its dependencies.
 func LoadProfile(name, base string) (*Plan, error) {
-	name = strings.TrimSuffix(name, ".hcl")
-	if !profileName.MatchString(name) {
-		return nil, fmt.Errorf("invalid profile reference %q: use a profile name", name)
+	program, err := PrepareProfile(name, base)
+	if err != nil {
+		return nil, err
 	}
-	loader := profileLoader{base: base}
-	defer loader.close()
-	loaded, err := loader.load(name, nil)
-	return validatePlan(loaded, err)
+	return program.Bind(nil)
 }
 
 func (l *profileLoader) directory() (*os.Root, error) {
@@ -63,10 +64,20 @@ func (l *profileLoader) close() {
 	}
 }
 
-func (l *profileLoader) load(name string, stack []string) (compiledProfile, error) {
+func (l *profileLoader) load(name string, stack []string, supplied map[string]cty.Value) (compiledProfile, error) {
 	if slices.Contains(stack, name) {
 		return compiledProfile{}, fmt.Errorf("profile include cycle: %s", strings.Join(append(stack, name), " -> "))
 	}
+	filename := filepath.Join(l.base, name+".hcl")
+	values, err := bindArguments(l.program.documents[filename].arguments, supplied, true)
+	if err != nil {
+		return compiledProfile{}, fmt.Errorf("include %q: %w", name, err)
+	}
+	bound := cty.ObjectVal(values)
+	if previous, ok := l.bindings[filename]; ok && !previous.RawEquals(bound) {
+		return compiledProfile{}, fmt.Errorf("included profile %q reached with different arguments", name)
+	}
+	l.bindings[filename] = bound
 	if cached, ok := l.profiles[name]; ok {
 		if len(stack)+cached.depth > maxDepth {
 			return compiledProfile{}, fmt.Errorf("profile include nesting exceeds %d levels", maxDepth)
@@ -76,16 +87,7 @@ func (l *profileLoader) load(name string, stack []string) (compiledProfile, erro
 	if len(stack) >= maxDepth {
 		return compiledProfile{}, fmt.Errorf("profile include nesting exceeds %d levels", maxDepth)
 	}
-	root, err := l.directory()
-	if err != nil {
-		return compiledProfile{}, err
-	}
-	filename := name + ".hcl"
-	source, err := readRegularFile(root, filename, maxSourceSize)
-	if err != nil {
-		return compiledProfile{}, fmt.Errorf("read profile %q: %w", name, err)
-	}
-	result, err := l.compile(source, filepath.Join(l.base, filename), append(stack, name))
+	result, err := l.compile(filename, append(stack, name))
 	if err != nil {
 		return compiledProfile{}, err
 	}

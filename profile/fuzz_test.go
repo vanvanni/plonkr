@@ -9,7 +9,7 @@ import (
 )
 
 // The fuzz targets double as regression tests: `go test` runs every seed, and
-// `go test -fuzz FuzzParse ./profile` explores beyond them.
+// `go test -fuzz '^FuzzParse$' ./profile` explores beyond them.
 
 func seedProfiles(f *testing.F) {
 	f.Helper()
@@ -26,6 +26,9 @@ func seedProfiles(f *testing.F) {
 		"{\n" + oneTask("Envelope") + "}\n",
 		"tasks {\r\n task \"crlf\" {\r\n order = 0\r\n script = [<<-EOT\r\n echo a\r\n EOT\r\n ]\r\n }\r\n}\r\n",
 		"include = [\"a\", \"a\"]\n",
+		argumentProfile("argument \"text\" {\ntype = string\ndefault = \"a'b\"\nvalidation { pattern = \".+\" }\n}", `["echo ${shellquote(args.text)}"]`),
+		argumentProfile("argument \"port\" {\ntype = integer\ndefault = 8080\nvalidation {\nmin = 1024\nmax = 65535\n}\n}", `["echo ${args.port}"]`),
+		argumentProfile("argument \"enabled\" {\ntype = bool\ndefault = true\n}", `["echo ${args.enabled}"]`),
 		"unit \"a.service\" {\n source = \"a.tmpl\"\n}\n",
 		"tasks { task \"x\" { order = 1\n script = [run(\"s\")] } }",
 		"\xef\xbb\xbftasks {}",
@@ -172,17 +175,20 @@ func FuzzParseWithIncludes(f *testing.F) {
 	f.Add(`include = ["leaf"]` + "\n" + oneTask("Top"))
 	f.Add(`include = ["leaf", "other"]`)
 	f.Add(`include = ["top"]`)
-	f.Fuzz(func(t *testing.T, source string) {
-		base := t.TempDir()
-		write := func(name, text string) {
-			if err := os.WriteFile(filepath.Join(base, name), []byte(text), 0o600); err != nil {
-				t.Fatal(err)
-			}
+	// Dependencies are immutable. Recreating files for every mutation makes this
+	// a filesystem benchmark and starves the parser of useful fuzz iterations.
+	base := f.TempDir()
+	for name, source := range map[string]string{
+		"leaf.hcl":  "configuration {\n groups = [{name = \"leaf\"}]\n}\n" + oneTask("Leaf"),
+		"other.hcl": "include = [\"leaf\"]\n" + oneTask("Other"),
+		"top.hcl":   "include = [\"top\"]\n",
+	} {
+		if err := os.WriteFile(filepath.Join(base, name), []byte(source), 0600); err != nil {
+			f.Fatal(err)
 		}
-		write("leaf.hcl", "configuration {\n groups = [{name = \"leaf\"}]\n}\n"+oneTask("Leaf"))
-		write("other.hcl", "include = [\"leaf\"]\n"+oneTask("Other"))
-		write("top.hcl", source)
-		plan, err := LoadProfile("top", base)
+	}
+	f.Fuzz(func(t *testing.T, source string) {
+		plan, err := ParseWithBase([]byte(source), filepath.Join(base, "top.hcl"), base)
 		if err != nil {
 			return
 		}

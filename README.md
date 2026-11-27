@@ -35,6 +35,7 @@ Plonkr automates the setup work that comes after creating a machine. Describe us
 
 - Create users and groups automatically, or defer creation to an explicit task.
 - Combine managed setup operations with ordered shell scripts and reusable snippets.
+- Collect and validate profile arguments before connecting, then forward them explicitly to snippets.
 - Clone repositories as the intended user using an existing local deploy-key file, copied byte-for-byte.
 - Render and install systemd units and configure the target timezone.
 - Preview a plan before connecting, enable profile-defined flags, or bypass selected tasks.
@@ -104,6 +105,11 @@ go run . run my-host ./examples/minimal.hcl
 ```
 
 For accounts, repository access and unit templates, see [the application example](examples/app-machine.hcl). Replace its sample repository, key and host values before running it. The [CLI guide](CLI.md) explains prerequisites and execution behavior.
+
+For typed inputs and validation, see [the arguments example](examples/arguments.hcl)
+and [argument syntax](CLI.md#arguments). Supply values with repeatable
+`--arg name=value` options, or answer the profile's questions in a terminal before
+execution starts.
 
 ## Profiles and repository keys
 

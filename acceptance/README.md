@@ -55,6 +55,22 @@ The internal 40-minute deadline leaves time before the documented outer timeout.
 
 ## Coverage and limits
 
+For the argument configuration and input edge cases without a VM:
+
+```sh
+go test ./profile ./cmd -count=1
+go test ./profile -run '^$' -fuzz '^FuzzArgumentForwarding$' -fuzztime 30s
+go test ./profile -run '^$' -fuzz '^FuzzParseWithIncludes$' -fuzztime 30s
+```
+
+The argument tests cover invalid declaration/rule combinations, signed integer
+limits, UTF-8 and byte limits, intersecting rules, include defaults/conflicts,
+parameterized snippet depth and expansion limits, independent concurrent parser
+bindings, default/explicit-value equivalence, prompt editing and I/O failures,
+CR/LF/CRLF handoff (including subprocess-style `io.Copy`), and validation failures
+before any SSH call or journal. Concurrent parser binding tests do not imply
+support for concurrent provisioning runs against one target.
+
 Package tests cover parser validation, ordering, include/snippet expansion,
 template confinement, environment paths, terminal rendering, cancellation and
 error paths. The guest scenarios exercise actual CLI processes and OpenSSH against
@@ -63,7 +79,7 @@ timezone and result reporting. The application example is copied into scratch
 and its external repository/key/host-trust placeholders are replaced with fixture
 values; the checked-in example stays unchanged.
 
-The 15 guest scenario groups cover:
+The 17 guest scenario groups cover:
 
 - All shipped example profiles: validation, preview and execution (external
   placeholders are replaced in the application example). Adding another example
@@ -80,6 +96,13 @@ The 15 guest scenario groups cover:
   replacement, and automatic acceptance of unknown or changed repository host keys.
 - Nested flags, configured/CLI bypass, dynamic help, unknown options, sanitized
   output, private logs and absence of private key material in logs.
+- Arguments example over SSH, explicit forwarding, invalid and missing inputs,
+  literal shell quoting, plus real terminal questions, validation retries,
+  defaults, cancellation and transition into the TUI.
+- Argument edge configurations: invalid disabled/bypassed calls stop earlier tasks,
+  shared include defaults merge once, conflicting values leave the target untouched,
+  zero/false and signed integer limits survive SSH, and argument-driven accounts,
+  groups, repositories and unit templates apply correctly and can be repeated.
 - Task locks: `exists` and `eval` directives alone and combined, state recorded
   after the task, changed results rerunning, `--force`, dry-run, explicit bypass
   precedence, root-owned private state written through sudo by the non-root
@@ -130,3 +153,12 @@ minutes) and the VM was removed.
 the expanded package, property, fuzz-seed and end-to-end tests. All 15 groups and the
 Linux race run of every package passed from Windows on Ubuntu 24.04 (about 7 minutes,
 mostly the race-instrumented `provision` tests) and the VM was removed.
+
+2026-11-27: argument configuration edge pass. All 17 groups, native checks and
+Linux vet/race tests passed on Ubuntu 24.04 with Go 1.26.0. The new group covers
+disabled/bypassed call contracts, shared include defaults/conflicts, signed numeric
+limits, zero/false, and repeatable argument-driven accounts, repositories and units.
+The first pass rejected a numeric unit variable as intended; the valid fixture now
+interpolates the port into a complete command string, and the numeric-only case
+has explicit rejection tests. Both disposable VMs were removed. Local forwarding
+and include fuzz campaigns passed more than 3.7 million inputs combined.

@@ -34,6 +34,7 @@ Built-in flags:
   --bypass NAME         Bypass a named task (repeatable, exact match)
   --force               Run tasks even when their lock would bypass them
   --auto-approve       Approve replacement of differing target deploy keys
+  --arg NAME=VALUE      Supply a profile argument (repeatable)
 
 Profile flags discovered from flag("name", ...) are added dynamically.
 Run "plonk run HOST PROFILE --help" to inspect flags for a specific profile.`,
@@ -52,11 +53,11 @@ Run "plonk run HOST PROFILE --help" to inspect flags for a specific profile.`,
 			if err != nil {
 				return err
 			}
-			plan, err := loadProfileRef(profileRef, profilesDir, explicitDir)
+			program, err := loadProgramRef(profileRef, profilesDir, explicitDir)
 			if err != nil {
 				return err
 			}
-			return executeProfile(cmd.Context(), host, profileRef, plan, args[2:], cmd.InOrStdin(), cmd.OutOrStdout(), cmd.ErrOrStderr())
+			return executeProfile(cmd.Context(), host, profileRef, nil, args[2:], cmd.InOrStdin(), cmd.OutOrStdout(), cmd.ErrOrStderr(), program)
 		},
 	}
 }
@@ -88,10 +89,16 @@ func scanProfilesDir(args []string) (string, bool, error) {
 	return dir, set, nil
 }
 
-func executeProfile(ctx context.Context, host, profileRef string, plan *profile.Plan, args []string, stdin io.Reader, stdout, stderr io.Writer) error {
+func executeProfile(ctx context.Context, host, profileRef string, plan *profile.Plan, args []string, stdin io.Reader, stdout, stderr io.Writer, programs ...*profile.Program) error {
 	var dryRun, tty, noTUI, autoApprove, force bool
 	var profilesDir string
 	var bypassList []string
+	var argumentOptions []string
+	var program *profile.Program
+	interactiveInput := terminalReader(stdin)
+	if len(programs) > 0 {
+		program = programs[0]
+	}
 
 	runCmd := &cobra.Command{
 		Use:           "plonk run " + host + " " + profileRef + " [flags]",
@@ -110,13 +117,35 @@ func executeProfile(ctx context.Context, host, profileRef string, plan *profile.
 	runCmd.Flags().BoolVar(&force, "force", false, "Run tasks even when their lock would bypass them")
 	runCmd.Flags().StringVar(&profilesDir, "profiles-dir", "", "Override the profiles base directory")
 	runCmd.Flags().StringArrayVar(&bypassList, "bypass", nil, "Bypass a named task (repeatable, case-sensitive)")
+	runCmd.Flags().StringArrayVar(&argumentOptions, "arg", nil, "Supply a profile argument as name=value (repeatable)")
 
 	flagNames := plan.FlagNames()
+	if program != nil {
+		flagNames = program.FlagNames()
+	}
 	for _, name := range flagNames {
 		runCmd.Flags().Bool(name, false, `Enable steps gated by flag("`+name+`", ...)`)
 	}
 
 	runCmd.RunE = func(cmd *cobra.Command, _ []string) error {
+		if program != nil {
+			values, err := parseArgumentOptions(program, argumentOptions)
+			if err != nil {
+				return err
+			}
+			input, closeInput, err := collectArguments(cmd.Context(), program, values, stdin, stderr, terminalReader(stdin))
+			if err != nil {
+				return err
+			}
+			defer closeInput()
+			stdin = input
+			// Prompts finish before the execution UI. A buffered input is also kept
+			// for --tty so a prompt cannot discard subsequent input.
+			plan, err = program.Bind(values)
+			if err != nil {
+				return fmt.Errorf("preflight: %w; no SSH connection was made", err)
+			}
+		}
 		enabled := make(map[string]bool, len(flagNames))
 		for _, name := range flagNames {
 			enabled[name], _ = cmd.Flags().GetBool(name)
@@ -221,7 +250,7 @@ func executeProfile(ctx context.Context, host, profileRef string, plan *profile.
 		}
 
 		var runErr error
-		if !dryRun && !tty && !noTUI && terminalReader(stdin) && terminalWriter(stdout) {
+		if !dryRun && !tty && !noTUI && interactiveInput && terminalWriter(stdout) {
 			runErr = ui.Run(cmd.Context(), host, plan, work, tea.WithInput(stdin), tea.WithOutput(stdout), tea.WithAltScreen())
 		} else {
 			printer := plainPrinter{plan: plan, dryRun: dryRun, stdout: stdout, stderr: stderr, last: stdout, lineStart: true}

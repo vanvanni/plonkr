@@ -153,7 +153,7 @@ class Suite:
     def examples_validate(self):
         examples = sorted((ROOT / "examples").glob("*.hcl"))
         check(bool(examples), "No example profiles found")
-        executed_examples = {"minimal.hcl", "app-machine.hcl"}
+        executed_examples = {"minimal.hcl", "app-machine.hcl", "arguments.hcl"}
         check({example.name for example in examples} == executed_examples,
               "Example list changed: add/remove its execution scenario and update executed_examples")
         for example in examples:
@@ -580,15 +580,164 @@ tasks {{
         self.write("cycle-b", 'include = ["cycle-a"]\n')
         check("cycle" in self.cli("validate", "cycle-a", expected=1).stdout, "Include cycle accepted")
 
-    def terminal(self, name, flags=(), cancel=False, answer=None):
+    def arguments(self):
+        example = ROOT / "examples/arguments.hcl"
+        result = self.cli("run", self.host, example, "--no-tui",
+                          "--arg", "app_name=api", "--arg", "port=9000")
+        check("Application: api, port: 9000" in result.stdout, "Arguments example did not execute with supplied values")
+        snippets = self.profiles / "snippets"
+        snippets.mkdir(exist_ok=True)
+        shutil.copyfile(ROOT / "examples/snippets/arguments.hcl", snippets / "arguments.hcl")
+        source = example.read_text().replace('    default = "demo"', '')
+        self.write("inputs", source)
+        missing = self.apply("inputs", expected=1)
+        check("missing profile arguments: app_name" in missing.stdout, "Unattended missing input accepted")
+        invalid = self.apply("inputs", "--arg", "app_name=api", "--arg", "port=80", expected=1)
+        check("range" in invalid.stdout, "Invalid port accepted")
+        contract = source.replace('port = args.port', 'typo = args.port')
+        self.write("inputs-broken", contract)
+        check('requires argument "port"' in self.apply("inputs-broken", expected=1).stdout,
+              "Missing forwarding must fail before requesting the profile's missing answer")
+        code, output = self.terminal("inputs", ["--no-tui"], answers=[
+            ("Application name:", "Bad!\n"),
+            ("Application name:", "terminalapp\n"),
+            ("Application port [8080]:", "\n"),
+        ])
+        check(code == 0 and "Application: terminalapp, port: 8080" in output,
+              "Interactive validation/defaults failed: " + output[-2500:])
+        code, output = self.terminal("inputs", answers=[
+            ("Application name:", "tuiapp\n"),
+            ("Application port [8080]:", "\n"),
+        ])
+        check(code == 0 and "\x1b[?1049h" in output,
+              "TUI did not start after input collection: " + output[-2500:])
+        code, output = self.terminal("inputs", ["--no-tui"], answers=[("Application name:", "\x03")])
+        check(code == 130, "Argument cancellation must exit 130: " + output[-2500:])
+        injected = self.scratch / "argument-injection"
+        destination = self.scratch / "quoted-value"
+        payload = "a'b; $(touch " + str(injected) + ") \"c\""
+        self.write("quoted-input", '''arguments {
+  argument "text" { type = string }
+  argument "output" { type = string }
+}
+tasks {
+  task "Quote input" {
+    order = 0
+    script = ["printf '%s' ${shellquote(args.text)} > ${shellquote(args.output)}"]
+  }
+}
+''')
+        self.apply("quoted-input", "--arg", "text=" + payload, "--arg", "output=" + str(destination))
+        check(destination.read_text() == payload and not injected.exists(), "shellquote did not preserve input as literal data")
+
+    def argument_edges(self):
+        marker = self.scratch / "argument-preflight-marker"
+        early = 'tasks {\n' + task("First must never run", ["touch " + str(marker)])
+        for label, extra, flags in [
+            ("flag-disabled", 'script = [flag("optional", run("show-app-inputs", {name = "app"}))]', []),
+            ("profile-bypassed", 'bypass = true\nscript = [run("show-app-inputs", {name = "app"})]', []),
+            ("CLI-bypassed", 'script = [run("show-app-inputs", {name = "app"})]', ["--bypass", "Broken"]),
+            ("late-invalid-value", 'script = [run("show-app-inputs", {name = "app", port = 80})]', []),
+        ]:
+            self.write("argument-edge-" + label,
+                       early + 'task "Broken" {\norder = 1\n' + extra + '\n}\n}\n')
+            self.apply("argument-edge-" + label, *flags, expected=1)
+            check(not marker.exists(), label + " allowed an earlier task to execute")
+
+        counter = self.scratch / "argument-shared-count"
+        self.write("argument-shared", '''arguments {
+  argument "n" {
+    type = integer
+    default = 0
+  }
+  argument "enabled" {
+    type = bool
+    default = true
+  }
+}
+tasks {
+  task "Shared arguments" {
+    order = 0
+    script = ["printf '%s:%s\\n' ${args.n} ${args.enabled} >> ''' + str(counter) + '''"]
+  }
+}
+''')
+        self.write("argument-left", 'include "argument-shared" { arguments = {enabled = false} }\n')
+        self.write("argument-right", 'include "argument-shared" { arguments = {n = 0, enabled = false} }\n')
+        self.write("argument-diamond", 'include = ["argument-left", "argument-right"]\n')
+        self.apply("argument-diamond", "--dry-run")
+        check(not counter.exists(), "Dry run wrote argument-dependent target state")
+        self.apply("argument-diamond")
+        check(counter.read_text() == "0:false\n", "Shared inputs did not merge once or lost zero/false")
+        self.write("argument-right", 'include "argument-shared" { arguments = {n = 1, enabled = false} }\n')
+        result = self.apply("argument-diamond", expected=1)
+        check("different arguments" in result.stdout and counter.read_text() == "0:false\n",
+              "Conflicting include inputs changed the target")
+
+        for number in (-(2**63), 2**63 - 1):
+            self.apply("argument-shared", "--arg", "n=" + str(number), "--arg", "enabled=false")
+        check(counter.read_text().splitlines()[-2:] == [str(-(2**63)) + ":false", str(2**63 - 1) + ":false"],
+              "Signed integer boundaries were not preserved through SSH")
+
+        files = self.profiles / "files"
+        files.mkdir(exist_ok=True)
+        (files / "argument-edge.service.tmpl").write_text(
+            "[Unit]\nDescription=Argument edge fixture\n[Service]\nUser=${user}\nExecStart=${exec_start}\n")
+        self.write("argument-resources", '''arguments {
+  argument "account" { type = string }
+  argument "gid" { type = integer }
+  argument "zone" { type = string }
+  argument "url" { type = string }
+  argument "key" { type = string }
+  argument "checkout" { type = string }
+  argument "port" { type = integer }
+}
+configuration {
+  groups = [{name = args.account, gid = args.gid}]
+  users = [{name = args.account, groups = [args.account], service = true}]
+  timezone = args.zone
+}
+repository "argument-repo" {
+  url = args.url
+  key = args.key
+  path = args.checkout
+  user = args.account
+}
+unit "plonkr-arguments.service" {
+  source = "argument-edge.service.tmpl"
+  vars = {user = args.account, exec_start = "/usr/bin/printf port-${args.port}"}
+}
+tasks {
+  task "Argument resources" {
+    order = 0
+    setup = [repo("argument-repo"), unit("plonkr-arguments.service")]
+  }
+}
+''')
+        resource_args = ["--arg", "account=argedge", "--arg", "gid=29123", "--arg", "zone=UTC",
+                         "--arg", "url=" + self.repo_url, "--arg", "key=" + str(self.deploy),
+                         "--arg", "checkout=/srv/plonkr-argument-checkout", "--arg", "port=9001"]
+        self.apply("argument-resources", *resource_args)
+        check(run("id", "-gn", "argedge").stdout.strip() == "argedge", "Argument account/group creation failed")
+        check(run("getent", "group", "argedge").stdout.split(":")[2] == "29123", "Argument GID was not applied")
+        unit = Path("/etc/systemd/system/plonkr-arguments.service").read_text()
+        check("User=argedge" in unit and "port-9001" in unit, "Argument unit vars were not rendered")
+        check(self.shell("stat -c '%U' /srv/plonkr-argument-checkout/.git").stdout.strip() == "argedge",
+              "Argument repository owner/path did not apply")
+        self.apply("argument-resources", *resource_args)
+
+    def terminal(self, name, flags=(), cancel=False, answer=None, answers=None):
         master, slave = pty.openpty()
         fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", 35, 110, 0, 0))
         process = subprocess.Popen([str(BINARY), "run", self.host, name, *flags],
                                    stdin=slave, stdout=slave, stderr=slave,
-                                   env=self.env, start_new_session=True)
+                                   env=self.env, start_new_session=True,
+                                   preexec_fn=lambda: fcntl.ioctl(0, termios.TIOCSCTTY, 0))
         os.close(slave)
         data = bytearray()
         sent = False
+        answer_index = 0
+        answer_offset = 0
         deadline = time.monotonic() + 30
         try:
             while time.monotonic() < deadline:
@@ -603,6 +752,13 @@ tasks {{
                     if not chunk:
                         break
                     data.extend(chunk)
+                    if answers and answer_index < len(answers):
+                        needle, response = answers[answer_index]
+                        position = data.find(needle.encode(), answer_offset)
+                        if position >= 0:
+                            os.write(master, response.encode())
+                            answer_index += 1
+                            answer_offset = position + len(needle.encode())
                     if answer is not None and not sent and b"Replace this key?" in data:
                         os.write(master, answer.encode())
                         sent = True
@@ -666,6 +822,8 @@ def main():
             ("key replacement approval and automatic repository host acceptance", suite.key_conflict_and_trust),
             ("dynamic nested flags, both bypass forms, plain output and logs", suite.flags_bypass_and_logs),
             ("profile/snippet chaining and fail-fast result propagation", suite.chaining_and_failure),
+            ("arguments: explicit forwarding, validation, defaults and real terminal prompts", suite.arguments),
+            ("argument edges: disabled calls, shared includes, numeric bounds and managed resources", suite.argument_edges),
             ("task locks: exists, eval state, force, dry run and private state", suite.task_locks),
             ("edge cases: include once, reserved flags, hostile names, CRLF, large output, failures", suite.edge_cases),
             ("whole-plan validation before remote changes", suite.invalid_plan_prevents_changes),

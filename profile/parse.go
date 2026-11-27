@@ -37,11 +37,11 @@ func Parse(source []byte, filename string) (*Plan, error) {
 // ParseWithBase compiles a profile from source while resolving includes,
 // snippets, and unit templates beneath base.
 func ParseWithBase(source []byte, filename, base string) (*Plan, error) {
-	loader := profileLoader{base: base}
-	defer loader.close()
-	name := strings.TrimSuffix(filepath.Base(filename), ".hcl")
-	loaded, err := loader.compile(source, filename, []string{name})
-	return validatePlan(loaded, err)
+	program, err := Prepare(source, filename, base)
+	if err != nil {
+		return nil, err
+	}
+	return program.Bind(nil)
 }
 
 func validatePlan(loaded compiledProfile, err error) (*Plan, error) {
@@ -102,12 +102,13 @@ func documentBody(source []byte, filename string) []byte {
 	return body
 }
 
-func (l *profileLoader) compile(source []byte, filename string, stack []string) (compiledProfile, error) {
-	body, err := parseBody(source, filename)
-	if err != nil {
-		return compiledProfile{}, err
-	}
-	for _, block := range body.Blocks {
+func (l *profileLoader) compile(filename string, stack []string) (compiledProfile, error) {
+	doc := l.program.documents[filename]
+	syntax := doc.stripped()
+	ctx := argumentContext(l.bindings[filename].AsValueMap())
+	body := scopedBody{Body: syntax, context: ctx}
+	var err error
+	for _, block := range syntax.Blocks {
 		switch block.Type {
 		case "script", "scripts", "account":
 			return compiledProfile{}, fmt.Errorf("%s: legacy %q block is not supported in Plonkr v0.1.0; use configuration and tasks", block.DefRange(), block.Type)
@@ -177,8 +178,12 @@ func (l *profileLoader) compile(source []byte, filename string, stack []string) 
 
 	result := compiledProfile{plan: plan, depth: 1}
 	var includedOrdered []Task
-	for _, name := range includes {
-		child, err := l.load(name, stack)
+	for i, name := range includes {
+		values, err := evaluateArgumentMap(doc.includes[i].arguments, ctx)
+		if err != nil {
+			return compiledProfile{}, err
+		}
+		child, err := l.load(name, stack, values)
 		if err != nil {
 			return compiledProfile{}, fmt.Errorf("%s: include %q: %w", filename, name, err)
 		}

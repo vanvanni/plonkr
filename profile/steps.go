@@ -15,10 +15,11 @@ import (
 // HCL can carry actions returned by functions, but profile expressions cannot
 // construct these values directly or disguise a shell command as managed setup.
 type action struct {
-	step     Step
-	flag     string
-	children []cty.Value
-	snippets []string
+	step      Step
+	flag      string
+	children  []cty.Value
+	snippets  []string
+	arguments map[string]cty.Value
 }
 
 var (
@@ -91,7 +92,7 @@ func flagAction(args []cty.Value) (action, error) {
 		return action{}, fmt.Errorf("invalid flag name %q", name)
 	}
 	switch name {
-	case "help", "tty", "dry-run", "no-tui", "profiles-dir", "bypass", "version", "auto-approve", "force":
+	case "help", "tty", "dry-run", "no-tui", "profiles-dir", "bypass", "version", "auto-approve", "force", "arg":
 		return action{}, fmt.Errorf("reserved flag name %q", name)
 	}
 	return action{flag: name, children: slices.Clone(args[1:])}, nil
@@ -114,6 +115,12 @@ func logAction(args []cty.Value) (action, error) {
 }
 
 func runAction(args []cty.Value) (action, error) {
+	if len(args) == 2 && args[1].Type().IsObjectType() && !args[1].IsNull() {
+		if !isType(args[0], cty.String) || strings.TrimSpace(args[0].AsString()) == "" {
+			return action{}, fmt.Errorf("run() requires a non-empty snippet name")
+		}
+		return action{snippets: []string{args[0].AsString()}, arguments: args[1].AsValueMap()}, nil
+	}
 	names := make([]string, 0, len(args))
 	for _, arg := range args {
 		if !isType(arg, cty.String) || strings.TrimSpace(arg.AsString()) == "" {
@@ -194,7 +201,7 @@ func (d *stepDecoder) decode(value cty.Value, flags []string) error {
 			return fmt.Errorf("run() is only allowed in script, not setup")
 		}
 		for _, name := range item.snippets {
-			snippet, err := d.loader.expandSnippet(name, d.stack)
+			snippet, err := d.loader.expandSnippet(name, d.stack, item.arguments)
 			if err != nil {
 				return err
 			}

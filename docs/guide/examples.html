@@ -74,19 +74,25 @@ tasks {
 }</code></pre>
 <h2 id="walkthrough">How to read it</h2>
 <ol><li>The <code>app</code> group and user opt into automatic creation by omitting <code>create = false</code>.</li><li>The <code>reports</code> group and <code>reporter</code> user are created explicitly in the first task.</li><li>The second task requests repository setup as <code>app</code>, using the exact key file from the controller.</li><li>In the proposed phase model, the shell message runs only after that task's setup phase succeeds.</li></ol><p>The example assumes the proposed groups-before-users baseline and tasks in ascending order. Those ordering details still need approval. It does not install Git, grant access at the repository provider, set repository host trust, or make <code>/srv</code> writable for <code>app</code>. Those prerequisites must be prepared for an actual acceptance run.</p>
+<h2 id="arguments">Validated inputs</h2>
+<p>The <a href="reference.html#arguments">arguments reference</a> shows profile questions, defaults and validation rules, with explicit forwarding to reusable snippets. Try the complete <code>examples/arguments.hcl</code> profile from the repository:</p>
+<pre><code class="language-sh">plonk validate ./examples/arguments.hcl --arg app_name=api --arg port=9000
+plonk run my-host ./examples/arguments.hcl --arg app_name=api --dry-run</code></pre>
+<p>Omit <code>--arg</code> in a terminal to answer the questions before execution. Unattended runs use defaults or fail for missing required inputs. A missing snippet input is an error before any question or SSH connection.</p>
 <h2 id="snippets">Reusable shell work</h2>
-<p>The prototype supports named snippets referenced through <code>run()</code>. Keeping that capability in the script phase is proposed:</p><pre><code class="language-hcl">snippet "inspect-machine" {
+<p>Named snippets are referenced through <code>run()</code> in the script phase. Put definitions in <code>snippets/*.hcl</code> under the selected profile directory:</p><pre><code class="language-hcl">snippet "inspect-machine" {
   commands = ["uname -a", "id"]
 }
 
 # Proposed task script attribute:
-# script = [run("inspect-machine")]</code></pre><p>In the prototype, snippet names are independent of filenames, nested includes expand in place, and cycles fail during loading. Placement and discovery in the new profile directory still need to be finalized.</p>
+# script = [run("inspect-machine")]</code></pre><p>Snippet names are independent of filenames, nested calls expand in place, and cycles fail during loading. Forward declared snippet inputs explicitly with <code>run("name", {input = args.value})</code>; snippets never prompt or inherit the caller's inputs implicitly.</p>
 <h2 id="next">Before turning this into a runnable profile</h2>
 <p>Use the final schema and supported paths once released, replace the placeholder repository, supply an authorized deploy key, and prepare the target permissions and host trust. Installation and runnable command examples will be added after those paths are implemented and verified.</p><p>See <a href="configuration.html">configuration and tasks</a>, <a href="repositories.html">repository SSH keys</a> and <a href="execution.html">execution limits</a> for the surrounding behavior.</p></main>
 <aside class="toc" aria-label="On this page"><h4>On this page</h4><nav><a href="#overview">A small setup profile</a>
 <a href="#profile">Proposed profile</a>
 <a href="#walkthrough">How to read it</a>
 <a href="#snippets">Reusable shell work</a>
+<a href="#arguments">Validated inputs</a>
 <a href="#next">Before turning this into a runnable profile</a></nav></aside>
 </div></div>
 <footer class="site-footer">
