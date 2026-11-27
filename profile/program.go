@@ -17,6 +17,7 @@ import (
 type Program struct {
 	base         string
 	entry        string
+	entryName    string
 	documents    map[string]*profileDocument
 	snippets     map[string]snippet
 	flags        map[string]bool
@@ -66,7 +67,7 @@ func protectedMetadata(name string) bool {
 // PrepareProfile reads a named profile under base, then prepares its graph.
 func PrepareProfile(name, base string) (*Program, error) {
 	name = strings.TrimSuffix(name, ".hcl")
-	if !profileName.MatchString(name) {
+	if !validProfileReference(name) {
 		return nil, fmt.Errorf("invalid profile reference %q: use a profile name", name)
 	}
 	l := profileLoader{base: base}
@@ -77,16 +78,25 @@ func PrepareProfile(name, base string) (*Program, error) {
 	}
 	source, err := readRegularFile(root, name+".hcl", maxSourceSize)
 	if err != nil {
-		return nil, fmt.Errorf("read profile %q: %w", name, err)
+		return nil, fmt.Errorf("read profile %q (use ./ for a relative file path): %w", name, err)
 	}
-	return Prepare(source, filepath.Join(base, name+".hcl"), base)
+	p, err := Prepare(source, filepath.Join(base, name+".hcl"), base)
+	if err != nil {
+		return nil, err
+	}
+	p.entryName = name
+	return p, nil
 }
 
 func (p *Program) readDocument(l *profileLoader, source []byte, filename string, stack []string) error {
 	if slices.Contains(stack, filename) {
 		names := []string{}
 		for _, file := range append(stack, filename) {
-			names = append(names, strings.TrimSuffix(filepath.Base(file), ".hcl"))
+			rel, err := filepath.Rel(p.base, file)
+			if err != nil {
+				rel = file
+			}
+			names = append(names, strings.TrimSuffix(filepath.ToSlash(rel), ".hcl"))
 		}
 		return fmt.Errorf("profile include cycle: %s", strings.Join(names, " -> "))
 	}
@@ -143,7 +153,7 @@ func (p *Program) readDocument(l *profileLoader, source []byte, filename string,
 	p.documents[filename] = doc
 	seen := map[string]bool{}
 	for _, include := range doc.includes {
-		if !profileName.MatchString(include.name) {
+		if !validProfileReference(include.name) {
 			return fmt.Errorf("invalid include profile reference %q", include.name)
 		}
 		if seen[include.name] {
@@ -435,6 +445,9 @@ func (p *Program) Bind(supplied map[string]cty.Value) (*Plan, error) {
 	defer l.close()
 	l.bindings[p.entry] = cty.ObjectVal(values)
 	name := strings.TrimSuffix(filepath.Base(p.entry), ".hcl")
+	if p.entryName != "" {
+		name = p.entryName
+	}
 	loaded, err := l.compile(p.entry, []string{name})
 	return validatePlan(loaded, err)
 }

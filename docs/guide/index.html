@@ -53,12 +53,12 @@
 <p>Both scripts download the release archive, check it against the release's <code>SHA256SUMS</code> and install only <code>plonk</code>. Nothing else on the machine changes. Linux installs to <code>/usr/local/bin</code> as root and to <code>~/.local/bin</code> otherwise. Windows installs to <code>%LOCALAPPDATA%Programsplonk</code> for the current user, without administrator rights, and adds that folder to your user <code>PATH</code>. Read the scripts first if you like: <a href="../install.sh">install.sh</a> and <a href="../install.ps1">install.ps1</a>.</p>
 <p>Choose a version or folder, or remove Plonkr again:</p>
 <pre><code># Linux
-curl -fsSL https://plonkr.dev/install.sh | sh -s -- --version 2026.11.0-beta.3
+curl -fsSL https://plonkr.dev/install.sh | sh -s -- --version 2026.11.0-beta.4
 curl -fsSL https://plonkr.dev/install.sh | sh -s -- --dir ~/bin
 curl -fsSL https://plonkr.dev/install.sh | sh -s -- --uninstall
 
 # Windows (PowerShell)
-$env:PLONK_VERSION = '2026.11.0-beta.3'; irm https://plonkr.dev/install.ps1 | iex
+$env:PLONK_VERSION = '2026.11.0-beta.4'; irm https://plonkr.dev/install.ps1 | iex
 $env:PLONK_INSTALL_DIR = 'D:Toolsplonk'; irm https://plonkr.dev/install.ps1 | iex
 $env:PLONK_UNINSTALL = '1'; irm https://plonkr.dev/install.ps1 | iex</code></pre>
 <p>Check the result with <code>plonk version</code>. To build from source instead, see the <a href="https://github.com/vanvanni/plonkr#build-from-source">repository README</a>.</p>

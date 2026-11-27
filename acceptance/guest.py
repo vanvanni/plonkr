@@ -195,6 +195,28 @@ class Suite:
         check("EXPLICIT_LOCATION" in result.stdout and "Complete." in result.stdout,
               "Run command did not honor the explicit profile directory")
 
+    def subfolder_profiles(self):
+        (self.profiles / "nested").mkdir()
+        (self.profiles / "shared").mkdir()
+        marker = self.scratch / "nested-runs"
+        leaf = 'tasks {\n' + task("Shared nested", ["echo nested >> " + shlex.quote(str(marker))]) + '}\n'
+        self.write("shared/leaf", leaf)
+        self.write("nested/other", 'include "shared/leaf" {}\n')
+        path = self.write("nested/lab", 'include = ["shared/leaf", "nested/other"]\n')
+        result = self.cli("validate", "nested/lab")
+        check("Profile: nested/lab" in result.stdout, "Nested default name was lost")
+        self.apply("nested/lab")
+        check(marker.read_text().splitlines() == ["nested"], "Shared include did not run exactly once")
+        self.cli("validate", path, expected=1)
+        self.cli("run", self.host, path, "--profiles-dir", self.profiles, "--no-tui")
+        check(len(marker.read_text().splitlines()) == 2, "Explicit root/path execution failed")
+        self.write("nested/other", 'include = ["nested/lab"]\n')
+        result = self.cli("validate", "nested/lab", expected=1)
+        check("cycle" in result.stdout, "Cross-folder cycle accepted")
+        (self.profiles / "escape").symlink_to(self.scratch, target_is_directory=True)
+        (self.scratch / "outside.hcl").write_text(leaf)
+        self.cli("validate", "escape/outside", expected=1)
+
     def deferred_accounts(self):
         self.write("deferred", '''configuration {
   groups = [{ name = "deferredgrp", create = false }]
@@ -838,6 +860,7 @@ def main():
             ("all shipped examples validate and preview", suite.examples_validate),
             ("minimal example over real SSH", suite.minimal_example),
             ("default, environment and explicit profile directory discovery", suite.profile_discovery),
+            ("subfolder names, root includes, merge once, paths, cycles and confinement", suite.subfolder_profiles),
             ("application example provisions accounts, private clone, key and unit", suite.app_example),
             ("deferred and explicit user/group creation", suite.deferred_accounts),
             ("repeat application and independent git pull", suite.rerun_and_pull),

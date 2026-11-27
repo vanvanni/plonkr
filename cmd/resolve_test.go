@@ -47,7 +47,7 @@ func TestProfileResolution(t *testing.T) {
 		{"bare name uses the profiles directory, never the working directory", []string{"web"}, "from-env-dir"},
 		{"bare name with .hcl prefers the working directory", []string{"web.hcl"}, "from-cwd"},
 		{"--profiles-dir beats the environment", []string{"web", "--profiles-dir", flagDir}, "from-flag-dir"},
-		{"--profiles-dir makes a bare .hcl resolve there, not in the working directory", []string{"web.hcl", "--profiles-dir", flagDir}, "from-flag-dir"},
+		{".hcl is a path even with --profiles-dir", []string{"web.hcl", "--profiles-dir", flagDir}, "from-cwd"},
 		{"--profiles-dir=value form", []string{"web", "--profiles-dir=" + flagDir}, "from-flag-dir"},
 		{"explicit relative path", []string{"./web.hcl"}, "from-cwd"},
 		{"explicit absolute path", []string{filepath.Join(flagDir, "web.hcl")}, "from-flag-dir"},
@@ -61,10 +61,10 @@ func TestProfileResolution(t *testing.T) {
 		})
 	}
 
-	// Without a working-directory copy a bare .hcl falls back to the profiles directory.
+	// An explicit file never falls back to the profiles directory.
 	t.Chdir(t.TempDir())
-	if got, err := resolvedName(t, "web.hcl"); err != nil || got != "from-env-dir" {
-		t.Fatalf("fallback resolved %q, %v", got, err)
+	if _, err := resolvedName(t, "web.hcl"); err == nil {
+		t.Fatal("missing explicit file resolved as a name")
 	}
 }
 

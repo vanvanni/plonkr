@@ -49,7 +49,7 @@ tasks { ... }              # at most one</code></pre>
 <div class="table-wrap"><table>
 <thead><tr><th>Key</th><th>Type</th><th>What it does</th></tr></thead>
 <tbody>
-<tr><td><code>name</code></td><td>string</td><td>Display name shown in previews and logs. Defaults to the filename without <code>.hcl</code>. Must not be blank when set.</td></tr>
+<tr><td><code>name</code></td><td>string</td><td>Display name shown in previews and logs. Defaults to the full reference for a named profile (for example <code>proxmox/lab</code>), or the filename without <code>.hcl</code> for an explicit path. Must not be blank when set.</td></tr>
 <tr><td><code>include</code></td><td>list of strings</td><td>Other profiles (by name, from the same profiles directory) to load into this one. See <a href="#include">includes</a>.</td></tr>
 <tr><td><code>arguments</code></td><td>block</td><td>Typed inputs, prompts, defaults and validation rules. See <a href="#arguments">arguments</a>.</td></tr>
 <tr><td><code>include "NAME"</code></td><td>block</td><td>Include a profile with explicit argument forwarding. Use blocks or the legacy include list.</td></tr>
@@ -272,7 +272,7 @@ plonk run my-host ./examples/arguments.hcl --arg app_name=api --dry-run</code></
 <p>Durations use Go syntax with s, m and h and must total whole seconds from 1 second to 1 hour. Retry intervals default to 5s and cannot exceed the timeout; specify an interval for timeouts below 5s. Arguments may use <code>args.*</code> and are validated before connecting.</p>
 <p>Probes start immediately, run without overlapping, always use BatchMode=yes and disable PTYs, even with <code>--tty</code>. Each attempt is limited to the remaining timeout; SSH ConnectTimeout is at most 10 seconds. Connection and authentication failures retry. Host-key verification failures stop immediately: verify the identity, use <code>StrictHostKeyChecking accept-new</code> for trusted new lab addresses, or remove a verified stale entry for a recreated host with <code>ssh-keygen -R HOST</code>. Plonkr preserves your OpenSSH host-key policy.</p>
 <p>Changed failure reasons and the final success summary appear in output and logs; timeout errors include the last reason. The TUI shows elapsed time. Ctrl+C interrupts waits. Dry runs show planned steps without waiting or connecting. Flags, bypass and task locks apply normally.</p>
-<h2 id="include">Includes</h2>
+<h2 id="include">Includes</h2><p>Nested names such as <code>include = ["proxmox/machines"]</code> resolve from the profiles root, never from the including file's subfolder. Include blocks accept the same names. See <a href="profiles.html">name limits and file path rules</a>.</p>
 <p><code>include</code> loads other profiles into this one. Their Configuration tasks run first, then this profile's Configuration task, then the included tasks, then this profile's own tasks. Resources from an included profile stay private to it: refer to them from that profile's own tasks, not from the including profile. Include cycles are rejected.</p>
 <p>A profile is merged once, however many include paths reach it. If <code>left</code> and <code>right</code> both include <code>base</code>, <code>base</code> runs once, at the position where it is first reached (depth first, in the order listed). Listing the same profile twice in one <code>include</code> list is an error, because it is almost always a typo. A locked task in a shared profile is therefore valid.</p>
 <p>Forward values to an included profile with a labeled include block. Included profiles use supplied values or their own defaults and never prompt independently. Use either blocks or the legacy list in one profile. Shared profiles are merged once when their effective inputs match; differing inputs are a preflight error.</p>
@@ -283,6 +283,9 @@ plonk run my-host ./examples/arguments.hcl --arg app_name=api --dry-run</code></
 <pre><code>profiles/
 ├── app-machine.hcl
 ├── base.hcl
+├── proxmox/
+│   ├── lab.hcl
+│   └── machines.hcl
 ├── snippets/
 │   └── common.hcl
 └── files/

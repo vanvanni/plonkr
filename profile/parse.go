@@ -16,6 +16,22 @@ const maxSteps = 10_000
 
 var profileName = regexp.MustCompile(`^[a-zA-Z0-9_][a-zA-Z0-9_-]*$`)
 
+func validProfileReference(name string) bool {
+	if len(name) > 255 {
+		return false
+	}
+	segments := strings.Split(name, "/")
+	if len(segments) > 8 || segments[0] == "snippets" || segments[0] == "files" {
+		return false
+	}
+	for _, segment := range segments {
+		if !profileName.MatchString(segment) {
+			return false
+		}
+	}
+	return true
+}
+
 var profileSchema = hcl.BodySchema{
 	Attributes: []hcl.AttributeSchema{{Name: "name"}, {Name: "include"}},
 	Blocks: []hcl.BlockHeaderSchema{
@@ -131,7 +147,7 @@ func (l *profileLoader) compile(filename string, stack []string) (compiledProfil
 		return compiledProfile{}, fmt.Errorf("%s: profile name must not be empty", filename)
 	}
 	for i, name := range includes {
-		if !profileName.MatchString(name) {
+		if !validProfileReference(name) {
 			return compiledProfile{}, fmt.Errorf("%s: invalid include profile reference %q", filename, name)
 		}
 		if slices.Contains(includes[:i], name) {

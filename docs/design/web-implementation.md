@@ -178,3 +178,11 @@ and assistive-technology behavior have not been newly verified in a browser.
 Verified: static build validation (links, anchors, assets, 4 px grid); the preceding implementation pass checked headless Chromium layouts at 320–1920 px with no horizontal overflow, mobile menu and terminal reveal. Current Pegs identity and wordmark were exported from Figcraft and inspected. The current lockup is outlined SVG and does not depend on fonts.
 
 Not verified: Safari, Firefox and real mobile devices; screen-reader behaviour of the tabs and menu; Lighthouse and Core Web Vitals; behaviour with Inter and JetBrains Mono actually installed; deployment to GitHub Pages and DNS for plonkr.dev.
+
+### Subfolder profile reference, 2026-11-28
+
+The public location/reference pages document nested profile names, root-relative
+includes, name limits and explicit file path classification for beta.4. Version
+examples use beta.4. The existing Pegs identity and page styles are retained.
+Static validation and the website build passed (9 HTML pages, 244 local links
+and assets). No new browser layout or accessibility verification was performed.

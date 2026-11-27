@@ -79,7 +79,9 @@ timezone and result reporting. The application example is copied into scratch
 and its external repository/key/host-trust placeholders are replaced with fixture
 values; the checked-in example stays unchanged.
 
-The 18 guest scenario groups cover:
+The 19 guest scenario groups cover:
+
+- Nested profile names: real SSH execution, root-based includes, shared includes merged once, explicit path/base behavior, cross-folder cycles and escaping symlinks.
 
 - Waiting: recovery after sshd stops and restarts, command readiness retries,
   timeout diagnostics, dry runs, bypass, noninteractive probes with `--tty`,
@@ -175,3 +177,9 @@ exercised more than 600,000 inputs. The release build uses Go 1.27.2 and updated
 crypto/text dependencies; govulncheck reports no reachable vulnerabilities with
 that toolchain. The disposable VM was removed. Native Windows SSH and Linux
 arm64 execution remain unverified.
+
+Beta.4 verification (2026-11-28): the full suite passed all 19 groups on Ubuntu
+24.04 with Go 1.26.0, including Linux race tests and nested-profile SSH scenarios.
+Windows native checks and website validation passed; the VM was removed. Name
+validation and include parsing also passed over 2.2 million fuzz inputs. Native
+Windows SSH transport and Linux arm64 runtime remain unverified.

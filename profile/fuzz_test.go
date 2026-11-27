@@ -180,14 +180,20 @@ func FuzzParseWithIncludes(f *testing.F) {
 	f.Add(`include = ["leaf"]` + "\n" + oneTask("Top"))
 	f.Add(`include = ["leaf", "other"]`)
 	f.Add(`include = ["top"]`)
+	f.Add(`include = ["nested/leaf", "nested/other"]`)
 	// Dependencies are immutable. Recreating files for every mutation makes this
 	// a filesystem benchmark and starves the parser of useful fuzz iterations.
 	base := f.TempDir()
 	for name, source := range map[string]string{
-		"leaf.hcl":  "configuration {\n groups = [{name = \"leaf\"}]\n}\n" + oneTask("Leaf"),
-		"other.hcl": "include = [\"leaf\"]\n" + oneTask("Other"),
-		"top.hcl":   "include = [\"top\"]\n",
+		"leaf.hcl":         "configuration {\n groups = [{name = \"leaf\"}]\n}\n" + oneTask("Leaf"),
+		"other.hcl":        "include = [\"leaf\"]\n" + oneTask("Other"),
+		"nested/leaf.hcl":  oneTask("Nested"),
+		"nested/other.hcl": "include = [\"nested/leaf\"]\n",
+		"top.hcl":          "include = [\"top\"]\n",
 	} {
+		if err := os.MkdirAll(filepath.Dir(filepath.Join(base, name)), 0700); err != nil {
+			f.Fatal(err)
+		}
 		if err := os.WriteFile(filepath.Join(base, name), []byte(source), 0600); err != nil {
 			f.Fatal(err)
 		}

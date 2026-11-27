@@ -1,4 +1,4 @@
-# Plonkr CLI (`plonk`) — v2026.11.0-beta.3
+# Plonkr CLI (`plonk`) — v2026.11.0-beta.4
 
 ## Waiting steps
 
@@ -258,13 +258,29 @@ and repository permissions are still required. The controller-to-target SSH
 connection retains the user's normal OpenSSH policy.
 
 Profiles load their required `include` profiles, referenced snippets and unit
-templates before any remote execution. A bare name such as `web` resolves from
-`--profiles-dir`, then `PLONK_PROFILES_DIR`, then the platform default. An explicit
-path such as `./web.hcl` loads that file. Without `--profiles-dir`, a bare
-`web.hcl` prefers an existing file in the current directory before checking the
-profile directory. With `--profiles-dir`, a bare `web.hcl` resolves in that
-directory. Includes/snippets/templates resolve from the selected base, not from
-arbitrary directories, and unrelated profiles are not executed.
+templates before any remote execution. Names such as `web` and `proxmox/lab`
+resolve from `--profiles-dir`, then `PLONK_PROFILES_DIR`, then the platform default.
+Each `/`-separated segment uses letters, digits, `_` and `-`, starting with a
+letter, digit or `_`. Names have at most 255 bytes and eight segments; the first
+segment cannot be `snippets` or `files`. Empty, hidden and traversal segments and
+backslashes are invalid. `.hcl` is implied. The default display name is the full
+reference, such as `proxmox/lab`; an explicit `name` still overrides it.
+
+An absolute reference, a reference containing `\`, one ending in `.hcl`, or one
+starting with `./` or `../` is a file path. Paths always load that file, even with
+`--profiles-dir`; there is no fallback for a missing `web.hcl`. Use `web` to look
+up a named profile. Use `./proxmox/lab` for an extensionless relative file path.
+This changes the earlier treatment of slash-containing extensionless references
+and bare `.hcl` lookup.
+
+Includes always resolve from the selected profiles root, never the including
+file's subfolder: `include = ["shared/base"]` and `include "shared/base" {}` both
+load `<profiles>/shared/base.hcl`. Snippets stay flat in `snippets/`, and templates
+stay in `files/` beneath that root. Reads remain confined with `os.Root`.
+When selecting by explicit path, the file's directory is the default base;
+`--profiles-dir` overrides that base for dependencies. Prefer names for subfolder
+profiles, or provide `--profiles-dir` alongside a path. Unrelated profiles are
+not executed.
 
 For the full opt-in suite on a Windows or Linux Multipass host, run from the repository root:
 
