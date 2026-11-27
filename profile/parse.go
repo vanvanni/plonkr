@@ -129,9 +129,12 @@ func (l *profileLoader) compile(source []byte, filename string, stack []string) 
 	if _, set := fields.values["name"]; set && strings.TrimSpace(name) == "" {
 		return compiledProfile{}, fmt.Errorf("%s: profile name must not be empty", filename)
 	}
-	for _, name := range includes {
+	for i, name := range includes {
 		if !profileName.MatchString(name) {
 			return compiledProfile{}, fmt.Errorf("%s: invalid include profile reference %q", filename, name)
+		}
+		if slices.Contains(includes[:i], name) {
+			return compiledProfile{}, fmt.Errorf("%s: include lists profile %q more than once", filename, name)
 		}
 	}
 
@@ -179,6 +182,13 @@ func (l *profileLoader) compile(source []byte, filename string, stack []string) 
 		if err != nil {
 			return compiledProfile{}, fmt.Errorf("%s: include %q: %w", filename, name, err)
 		}
+		if l.merged[name] {
+			continue
+		}
+		if l.merged == nil {
+			l.merged = make(map[string]bool)
+		}
+		l.merged[name] = true
 		childOrdered, err := result.include(name, child)
 		if err != nil {
 			return compiledProfile{}, fmt.Errorf("%s: %w", filename, err)

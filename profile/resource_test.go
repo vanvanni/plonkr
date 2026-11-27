@@ -75,7 +75,6 @@ func TestRepositoryFields(t *testing.T) {
 		{"root path", "/", "external", "", "safe absolute POSIX path"},
 		{"relative path", "app", "external", "", "safe absolute POSIX path"},
 		{"non-string key", "/srv/app", "external", "key = true", "key must be a string"},
-		{"empty key", "/srv/app", "external", `key = ""`, "absolute local file path"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			_, err := Parse([]byte(repositorySource("https://example.com/app.git", tc.path, tc.user, tc.attrs)), "repo.hcl")

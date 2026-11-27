@@ -91,7 +91,7 @@ func flagAction(args []cty.Value) (action, error) {
 		return action{}, fmt.Errorf("invalid flag name %q", name)
 	}
 	switch name {
-	case "help", "tty", "dry-run", "no-tui", "profiles-dir", "bypass", "version", "auto-approve":
+	case "help", "tty", "dry-run", "no-tui", "profiles-dir", "bypass", "version", "auto-approve", "force":
 		return action{}, fmt.Errorf("reserved flag name %q", name)
 	}
 	return action{flag: name, children: slices.Clone(args[1:])}, nil

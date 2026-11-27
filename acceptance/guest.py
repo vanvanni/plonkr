@@ -464,6 +464,111 @@ snippet "outer" {
         self.apply("lock-fail", expected=3)
         self.shell("test ! -e " + shlex.quote(state_file("lock-fail")))
 
+    def edge_cases(self):
+        def lines(path):
+            return len(path.read_text().splitlines()) if path.exists() else 0
+
+        # A profile reached through more than one include path runs once.
+        order_file = self.scratch / "edge-order"
+        self.write("edge-shared", 'tasks {\n' + task("Shared", [f"printf shared >> {order_file}"]) + '}\n')
+        self.write("edge-left", 'include = ["edge-shared"]\ntasks {\n' + task("Left", [f"printf left >> {order_file}"]) + '}\n')
+        self.write("edge-right", 'include = ["edge-shared"]\ntasks {\n' + task("Right", [f"printf right >> {order_file}"]) + '}\n')
+        self.write("edge-diamond", 'include = ["edge-left", "edge-right"]\ntasks {\n' + task("Top", [f"printf top >> {order_file}"]) + '}\n')
+        self.apply("edge-diamond")
+        check(order_file.read_text() == "sharedleftrighttop", f"Shared include did not run once: {order_file.read_text()!r}")
+        self.write("edge-duplicate", 'include = ["edge-shared", "edge-shared"]\n')
+        check("more than once" in self.cli("validate", "edge-duplicate", expected=1).stdout, "Duplicate include accepted")
+
+        # A locked task in a shared profile is valid, and its lock works through the diamond.
+        marker, locked_runs = self.scratch / "edge-lock-marker", self.scratch / "edge-lock-runs"
+        locked = 'tasks {\n' + task("Shared locked", [f"touch {marker}", f"echo run >> {locked_runs}"], 0,
+                                    '    lock {\n      exists = [' + quote(marker) + ']\n    }\n') + '}\n'
+        self.write("edge-locked", locked)
+        self.write("edge-lock-left", 'include = ["edge-locked"]\n')
+        self.write("edge-lock-right", 'include = ["edge-locked"]\n')
+        self.write("edge-lock-top", 'include = ["edge-lock-left", "edge-lock-right"]\n')
+        self.apply("edge-lock-top")
+        self.apply("edge-lock-top")
+        check(lines(locked_runs) == 1, "Locked task in a shared profile did not run exactly once across two runs")
+
+        # Built-in flag names cannot be redefined by a profile, and never crash the CLI.
+        self.write("edge-force", 'tasks {\n' + task("Forced", ["true"]).replace('"true"', 'flag("force", "true")') + '}\n')
+        result = self.apply("edge-force", expected=1)
+        check("reserved flag name" in result.stdout and "panic" not in result.stdout.lower(), f"Reserved flag name not rejected cleanly: {result.stdout}")
+
+        # A deploy key never applies to an https:// repository.
+        self.write("edge-https-key", f'''repository "web" {{
+  url = "https://example.invalid/team/web.git"
+  path = "/srv/edge-web"
+  user = "app"
+  key = {quote(self.deploy)}
+}}
+tasks {{
+  task "Clone" {{
+    order = 0
+    setup = [repo("web")]
+  }}
+}}
+''')
+        check("key applies only to SSH" in self.cli("validate", "edge-https-key", expected=1).stdout, "https URL with a key accepted")
+
+        # Lock paths and task names are data: quotes, substitutions and unicode stay inert.
+        evidence = self.scratch / "EDGE-EVIDENCE"
+        hostile = self.scratch / "it's $(touch EDGE-EVIDENCE) `touch EDGE-EVIDENCE` a b"
+        hostile.write_text("x")
+        hostile_runs = self.scratch / "edge-hostile-runs"
+        self.write("edge-hostile", 'tasks {\n' + task("Hostile path", [f"echo run >> {hostile_runs}"], 0,
+                   '    lock {\n      exists = [' + quote(hostile) + ']\n    }\n') + '}\n')
+        result = self.apply("edge-hostile")
+        check("bypassed by lock: exists" in result.stdout and lines(hostile_runs) == 0, "Hostile lock path was not held")
+        check(not evidence.exists(), "A lock path was executed as shell code")
+        hostile.unlink()
+        self.apply("edge-hostile")
+        check(lines(hostile_runs) == 1, "Missing hostile lock path did not run the task")
+
+        version, named_runs = self.scratch / "edge-name-version", self.scratch / "edge-name-runs"
+        version.write_text("v1\n")
+        weird_name = 'Zażółć "quoted" \'single\' $x ✓'
+        self.write("edge-name", 'name = "Name with \'quotes\' and \\"double\\" ✓"\ntasks {\n'
+                   + task(weird_name, [f"echo run >> {named_runs}"], 0, '    lock {\n      eval = [' + quote("cat " + str(version)) + ']\n    }\n') + '}\n')
+        self.apply("edge-name")
+        self.apply("edge-name")
+        check(lines(named_runs) == 1, "Lock state for a task with quotes and unicode in its name was lost")
+        version.write_text("v2\n")
+        self.apply("edge-name")
+        check(lines(named_runs) == 2, "Changed eval result did not rerun a task with an unusual name")
+
+        # A profile edited on Windows (CRLF) never leaks carriage returns into remote commands.
+        crlf_file = self.scratch / "edge-crlf-output"
+        text = ('tasks {\n  task "CRLF" {\n    order = 0\n    script = [<<-EOT\n      printf \'one\\n\' > ' + str(crlf_file)
+                + '\n      printf \'two\\n\' >> ' + str(crlf_file) + '\n    EOT\n    ]\n  }\n}\n')
+        (self.profiles / "edge-crlf.hcl").write_bytes(text.replace("\n", "\r\n").encode())
+        self.apply("edge-crlf")
+        check(crlf_file.read_bytes() == b"one\ntwo\n", f"CRLF leaked into a remote command: {crlf_file.read_bytes()!r}")
+
+        # A command's own output can be large without stalling the run or the log.
+        self.write("edge-large", 'tasks {\n' + task("Large output", ["head -c 3000000 /dev/zero | tr '\\0' x; echo; seq 1 50000"]) + '}\n')
+        result = self.apply("edge-large")
+        check("Complete." in result.stdout and "\n50000\n" in result.stdout, "Large output run did not complete")
+        largest = max(self.logs.glob("*.log"), key=lambda p: p.stat().st_mtime_ns)
+        check(largest.stat().st_size > 3_000_000 and stat.S_IMODE(largest.stat().st_mode) == 0o600, "Large output log is missing or not private")
+
+        # An unreachable host is a connection failure (255), reported as failed and logged.
+        result = self.cli("run", "plonkr-no-such-host.invalid", "edge-shared", "--no-tui", expected=255)
+        check("Failed." in result.stdout, "Unreachable host was not reported as failed")
+
+        # An interrupted SSH config update leaves a lock that must be diagnosed, not ignored.
+        self.repository_profile("stale-lock-fixture")
+        lock = "/var/lib/app/.ssh/.plonkr-config.lock"
+        self.shell("install -d -m 700 -o app -g app " + lock)
+        result = self.apply("stale-lock-fixture", expected=1)
+        check("Another SSH config update is active" in result.stdout and "remove " + lock in result.stdout,
+              f"Stale SSH config lock was not explained: {result.stdout[-1500:]}")
+        self.shell("test -d " + lock)
+        self.shell("rmdir " + lock)
+        self.apply("stale-lock-fixture")
+        self.shell("test -f /srv/stale-lock-fixture/README; test ! -e " + lock)
+
     def invalid_plan_prevents_changes(self):
         marker = self.scratch / "invalid-plan-executed"
         self.write("invalid", 'tasks {\n' + task("First", ["touch " + str(marker)])
@@ -562,6 +667,7 @@ def main():
             ("dynamic nested flags, both bypass forms, plain output and logs", suite.flags_bypass_and_logs),
             ("profile/snippet chaining and fail-fast result propagation", suite.chaining_and_failure),
             ("task locks: exists, eval state, force, dry run and private state", suite.task_locks),
+            ("edge cases: include once, reserved flags, hostile names, CRLF, large output, failures", suite.edge_cases),
             ("whole-plan validation before remote changes", suite.invalid_plan_prevents_changes),
             ("real PTY TUI, remote tty and cancellation", suite.terminal_paths),
         ]:

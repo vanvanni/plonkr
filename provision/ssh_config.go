@@ -59,7 +59,7 @@ func repositoryConfigScript(r profile.Repository) string {
 config="$HOME/.ssh/config"
 [ ! -L "$config" ] && { [ ! -e "$config" ] || [ -f "$config" ]; } || { echo 'SSH config must be a regular file, not a symlink' >&2; exit 1; }
 config_lock="$HOME/.ssh/.plonkr-config.lock"
-mkdir "$config_lock" || { echo 'Another SSH config update is active' >&2; config_lock=''; exit 1; }
+mkdir "$config_lock" || { printf 'Another SSH config update is active. If no plonk run is in progress, a previous run was interrupted: remove %s and retry.\n' "$config_lock" >&2; config_lock=''; exit 1; }
 tmp=$(mktemp "$HOME/.ssh/.plonkr-config.XXXXXX")
 chmod 600 "$tmp"
 printf '%s\n%s\nHost *\n%s\n' "$config_begin" "$config_block" "$config_end" > "$tmp"

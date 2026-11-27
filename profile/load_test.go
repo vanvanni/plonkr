@@ -157,8 +157,10 @@ func TestIncludeDepth(t *testing.T) {
 
 func TestIncludedStepLimit(t *testing.T) {
 	base := t.TempDir()
-	writeFixture(t, base, "parent.hcl", `include = ["child", "child"]`)
-	writeFixture(t, base, "child.hcl", taskSource("many", "order = 0\nscript = ["+strings.Repeat(`"true",`, maxSteps/2+1)+"]"))
+	writeFixture(t, base, "parent.hcl", `include = ["child", "sibling"]`)
+	many := taskSource("many", "order = 0\nscript = ["+strings.Repeat(`"true",`, maxSteps/2+1)+"]")
+	writeFixture(t, base, "child.hcl", many)
+	writeFixture(t, base, "sibling.hcl", many)
 	_, err := LoadProfile("parent", base)
 	checkError(t, err, "exceeds 10000 steps")
 }

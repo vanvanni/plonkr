@@ -50,6 +50,9 @@ func decodeRepository(block *hcl.Block) (Repository, error) {
 		return Repository{}, fmt.Errorf("invalid Linux repository user %q", repo.User)
 	}
 	if _, set := fields.values["key"]; set {
+		if strings.HasPrefix(repo.URL, "https://") {
+			return Repository{}, fmt.Errorf("key applies only to SSH repository URLs (ssh:// or git@host:path); an https:// URL never uses it")
+		}
 		if !validKeyPath(repo.Key) {
 			return Repository{}, fmt.Errorf("the private-key store was removed in v0.1.0; key must be an absolute local file path without traversal or control characters")
 		}

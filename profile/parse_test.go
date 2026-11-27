@@ -171,7 +171,7 @@ func TestTaskValidation(t *testing.T) {
 		})
 	}
 
-	for _, name := range []string{"help", "tty", "dry-run", "no-tui", "profiles-dir", "bypass", "version", "auto-approve"} {
+	for _, name := range []string{"help", "tty", "dry-run", "no-tui", "profiles-dir", "bypass", "version", "auto-approve", "force"} {
 		t.Run(name, func(t *testing.T) {
 			source := taskSource("Check", fmt.Sprintf("order = 0\nscript = [flag(%q, \"true\")]", name))
 			_, err := Parse([]byte(source), "bad.hcl")

@@ -71,6 +71,28 @@ task "Install Go" {
 
 Note: if `ssh` connects as a non-root user different from `repository.user`, stdin passes through `sudo -n -H -u`, so connecting directly as `root` or `repository.user` avoids target sudo input logging.
 
+## Decided behavior and edge cases
+
+These behaviors are decided, documented here and pinned by tests (`profile/edge_test.go`, `cmd/e2e_test.go`, `provision/edge_test.go` and the property test in `runner/property_test.go`).
+
+- **Includes merge once.** A profile reached by several include paths (a shared base included by two parents) is merged where it is first reached, depth first in listed order, and counts once against the step limit. Listing the same profile twice in one `include` list is a validation error. Locked tasks in a shared profile are therefore valid.
+- **Reserved flag names.** `flag("NAME", ...)` rejects the built-in option names `help`, `tty`, `dry-run`, `no-tui`, `profiles-dir`, `bypass`, `version`, `auto-approve` and `force` when the profile loads. A test compares this list with the options `plonk run --help` shows, so a new built-in option cannot be added without reserving it.
+- **`key` is for SSH URLs only.** A repository with an `https://` URL and a `key` is rejected at load time instead of copying a private key that is never used.
+- **Task names.** Names need not be unique, except that locked tasks must be (state is keyed by name). `--bypass NAME` bypasses every task with that exact, case-sensitive name.
+- **Lock results.** An `eval` result is the exit status plus standard output with trailing newlines removed; standard error is ignored. Each command runs in its own shell with standard input closed. A state file without a `version` field is read as the current version; a corrupt one fails the run and is never overwritten.
+- **Untrusted text.** Remote output, task names, profile names and error messages have terminal control sequences and invalid UTF-8 removed before they reach the screen, the run log or the exit message.
+- **Exit codes.** `0` success; the remote command's own status when a step fails (`255` when SSH itself cannot connect); `130` after cancellation; `1` for every validation, argument or local error. Validation, key and log-directory errors happen before any SSH connection.
+- **Interrupted SSH config update.** The managed `~/.ssh/config` block is updated under a lock directory, `~/.ssh/.plonkr-config.lock`. A run killed at that moment can leave it behind. The next run refuses to continue and prints the path to remove; Plonkr never removes a lock it does not own.
+
+## Running the edge-case suite
+
+```sh
+go test -count=1 ./...                                    # unit, property and end-to-end tests
+go test ./profile -run '^$' -fuzz FuzzParse -fuzztime 60s # explore beyond the seed inputs
+```
+
+Fuzz targets: `FuzzParse`, `FuzzParseWithIncludes`, `FuzzValidRepositoryURL`, `FuzzValidRepositoryRef`, `FuzzValidKeyPath`, `FuzzValidKnownHostLine`, `FuzzValidPublicKeyLine` (`profile`), `FuzzQuote` (`provision`), `FuzzCleanerNeverEmitsControlCharacters` (`runlog`) and `FuzzMessageText` (`ui`). Their seeds run as ordinary tests; a failing input is saved under `testdata/fuzz/` beside the package and replays on every later `go test`. `cmd/e2e_test.go` runs the real CLI against a fake `ssh` executable, so exit codes, cancellation and "no connection was made" guarantees are checked without a VM. The shell scripts that run on the target are executed in a real POSIX shell with stubbed system tools.
+
 ## Verification status
 
 Keyed repositories get a managed block in the target user's `~/.ssh/config`:

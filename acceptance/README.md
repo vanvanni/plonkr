@@ -63,7 +63,7 @@ timezone and result reporting. The application example is copied into scratch
 and its external repository/key/host-trust placeholders are replaced with fixture
 values; the checked-in example stays unchanged.
 
-The 14 guest scenario groups cover:
+The 15 guest scenario groups cover:
 
 - All shipped example profiles: validation, preview and execution (external
   placeholders are replaced in the application example). Adding another example
@@ -85,6 +85,13 @@ The 14 guest scenario groups cover:
   precedence, root-owned private state written through sudo by the non-root
   login, exists-only locks keeping no state, and a failed task recording nothing.
 - Chained profiles/nested snippets, fail-fast exit codes and pending work.
+- Edge cases over real SSH: a diamond include merging a shared profile once (and a
+  locked task in it running once across runs), a duplicate include rejected, `force`
+  rejected as a profile flag name without a crash, an `https://` repository with a
+  `key` rejected, lock paths containing quotes and `$()` staying inert, lock state for
+  a task named with quotes and unicode, a CRLF profile with a heredoc leaving no
+  carriage returns on the target, 3 MB of command output, an unreachable host exiting
+  255, and a stale SSH config lock being diagnosed and left alone.
 - Invalid phase/include-cycle rejection before any remote action.
 - Real PTY terminal UI, remote `--tty` allocation and cancellation after a remote
   readiness marker confirms execution has started.
@@ -118,3 +125,8 @@ included in the archive. The VM was removed.
 2026-11-27: full suite re-run on the committed `prerelease` tree before the first
 beta tag. All 14 groups and Linux race checks passed on Ubuntu 24.04 (about 3.5
 minutes) and the VM was removed.
+
+2026-11-27: edge-case hardening. Added the edge-case scenario group (15 groups) and
+the expanded package, property, fuzz-seed and end-to-end tests. All 15 groups and the
+Linux race run of every package passed from Windows on Ubuntu 24.04 (about 7 minutes,
+mostly the race-instrumented `provision` tests) and the VM was removed.

@@ -105,7 +105,7 @@ tasks { ... }              # at most one</code></pre>
 <tr><td><code>url</code></td><td>string</td><td>required</td><td>Clone URL: <code>ssh://</code>, <code>https://</code> or <code>git@host:path</code>. Must not contain a password, query or fragment.</td></tr>
 <tr><td><code>path</code></td><td>string</td><td>required</td><td>Absolute checkout path on the target.</td></tr>
 <tr><td><code>user</code></td><td>string</td><td>required</td><td>Target user that owns the checkout and runs Git.</td></tr>
-<tr><td><code>key</code></td><td>string</td><td>required for SSH URLs</td><td>Absolute path to the deploy key <em>on the machine running</em> <code>plonk</code> (a Windows path like <code>C:/Users/you/.ssh/key</code> is accepted). The file is copied unchanged to <code>~/.ssh/plonkr-LABEL.key</code> for <code>user</code>. Optional for public <code>https://</code> URLs.</td></tr>
+<tr><td><code>key</code></td><td>string</td><td>required for SSH URLs</td><td>Absolute path to the deploy key <em>on the machine running</em> <code>plonk</code> (a Windows path like <code>C:/Users/you/.ssh/key</code> is accepted). The file is copied unchanged to <code>~/.ssh/plonkr-LABEL.key</code> for <code>user</code>. Not allowed with <code>https://</code> URLs, which never use it: a repository with an <code>https://</code> URL and a <code>key</code> is rejected when the profile is loaded.</td></tr>
 <tr><td><code>ref</code></td><td>string</td><td>remote default branch</td><td>Branch, tag or full commit hash to check out. Do not prefix it with <code>refs/</code>.</td></tr>
 <tr><td><code>known_hosts</code></td><td>list of strings</td><td>none</td><td><code>known_hosts</code> lines appended to the target user's <code>~/.ssh/known_hosts</code>. Plonkr's own clone accepts the server's host key automatically either way; see <a href="repositories.html#access">repository SSH keys</a>.</td></tr>
 </tbody></table></div>
@@ -178,7 +178,7 @@ tasks { ... }              # at most one</code></pre>
 <tr><td><code>repo("LABEL")</code></td><td>setup</td><td>Install the deploy key and clone a declared repository. An existing matching checkout is verified, not updated.</td></tr>
 <tr><td><code>unit("NAME")</code></td><td>setup</td><td>Install a declared unit file.</td></tr>
 <tr><td><code>run("SNIPPET", ...)</code></td><td>script</td><td>Insert the commands of one or more <a href="#snippets">snippets</a>.</td></tr>
-<tr><td><code>flag("NAME", STEP, ...)</code></td><td>setup, script</td><td>Run the steps only when <code>--NAME</code> is passed to <code>plonk run</code>; otherwise they are reported as skipped. Names are lowercase with <code>-</code>. Built-in flag names such as <code>dry-run</code> are reserved.</td></tr>
+<tr><td><code>flag("NAME", STEP, ...)</code></td><td>setup, script</td><td>Run the steps only when <code>--NAME</code> is passed to <code>plonk run</code>; otherwise they are reported as skipped. Names are lowercase with <code>-</code>. Names of built-in options are reserved and rejected when the profile is loaded: <code>help</code>, <code>tty</code>, <code>dry-run</code>, <code>no-tui</code>, <code>profiles-dir</code>, <code>bypass</code>, <code>version</code>, <code>auto-approve</code> and <code>force</code>.</td></tr>
 <tr><td><code>log("MESSAGE", "COLOR")</code></td><td>setup, script</td><td>Print a message locally. The optional color is one of <code>default</code>, <code>black</code>, <code>red</code>, <code>green</code>, <code>yellow</code>, <code>blue</code>, <code>magenta</code>, <code>cyan</code>, <code>white</code> or <code>gray</code>.</td></tr>
 </tbody></table></div>
 <pre><code class="language-hcl">tasks {
@@ -202,6 +202,7 @@ tasks { ... }              # at most one</code></pre>
 }</code></pre>
 <h2 id="include">Includes</h2>
 <p><code>include</code> loads other profiles into this one. Their Configuration tasks run first, then this profile's Configuration task, then the included tasks, then this profile's own tasks. Resources from an included profile stay private to it: refer to them from that profile's own tasks, not from the including profile. Include cycles are rejected.</p>
+<p>A profile is merged once, however many include paths reach it. If <code>left</code> and <code>right</code> both include <code>base</code>, <code>base</code> runs once, at the position where it is first reached (depth first, in the order listed). Listing the same profile twice in one <code>include</code> list is an error, because it is almost always a typo. A locked task in a shared profile is therefore valid.</p>
 <h2 id="layout">Directory layout</h2>
 <pre><code>profiles/
 ├── app-machine.hcl

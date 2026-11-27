@@ -22,6 +22,10 @@ type profileLoader struct {
 	profiles   map[string]compiledProfile
 	snippets   map[string]snippet
 	expansions map[string]compiledSnippet
+	// merged records the profiles already merged into the plan being compiled.
+	// A profile reached again through another include path adds nothing, so a
+	// shared base profile included by two parents still runs once.
+	merged map[string]bool
 }
 
 type compiledProfile struct {
