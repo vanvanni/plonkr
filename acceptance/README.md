@@ -63,7 +63,7 @@ timezone and result reporting. The application example is copied into scratch
 and its external repository/key/host-trust placeholders are replaced with fixture
 values; the checked-in example stays unchanged.
 
-The 13 guest scenario groups cover:
+The 14 guest scenario groups cover:
 
 - All shipped example profiles: validation, preview and execution (external
   placeholders are replaced in the application example). Adding another example
@@ -80,6 +80,10 @@ The 13 guest scenario groups cover:
   replacement, and automatic acceptance of unknown or changed repository host keys.
 - Nested flags, configured/CLI bypass, dynamic help, unknown options, sanitized
   output, private logs and absence of private key material in logs.
+- Task locks: `exists` and `eval` directives alone and combined, state recorded
+  after the task, changed results rerunning, `--force`, dry-run, explicit bypass
+  precedence, root-owned private state written through sudo by the non-root
+  login, exists-only locks keeping no state, and a failed task recording nothing.
 - Chained profiles/nested snippets, fail-fast exit codes and pending work.
 - Invalid phase/include-cycle rejection before any remote action.
 - Real PTY terminal UI, remote `--tty` allocation and cancellation after a remote
@@ -106,3 +110,7 @@ removal were verified. A run launched from a Linux host remains to be performed.
 2026-11-27: re-verified after the canonical module-path update and SSH key-policy
 changes. All 13 groups and Linux race checks passed, including actual PTY yes/no
 approval, automatic key replacement and unknown/mismatched repository host keys.
+
+2026-11-27: added the task-lock scenario group. All 14 groups and Linux race checks
+passed from Windows on Ubuntu 24.04, with the repository SSH alias work
+included in the archive. The VM was removed.

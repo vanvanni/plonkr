@@ -24,6 +24,11 @@ var profileSchema = hcl.BodySchema{
 	},
 }
 
+var taskSchema = hcl.BodySchema{
+	Attributes: []hcl.AttributeSchema{{Name: "order"}, {Name: "bypass"}, {Name: "setup"}, {Name: "script"}},
+	Blocks:     []hcl.BlockHeaderSchema{{Type: "lock"}},
+}
+
 // Parse compiles a profile from source. File references resolve relative to filename.
 func Parse(source []byte, filename string) (*Plan, error) {
 	return ParseWithBase(source, filename, filepath.Dir(filename))
@@ -45,6 +50,9 @@ func validatePlan(loaded compiledProfile, err error) (*Plan, error) {
 	}
 	if loaded.steps == 0 || loaded.steps > maxSteps {
 		return nil, fmt.Errorf("profile must expand to between 1 and %d steps", maxSteps)
+	}
+	if err := validateLockNames(loaded.plan.Tasks); err != nil {
+		return nil, err
 	}
 	return loaded.plan, nil
 }
@@ -228,10 +236,11 @@ func (l *profileLoader) compileTask(block *hcl.Block, plan *Plan, limit int) (Ta
 	if strings.TrimSpace(name) == "" {
 		return Task{}, fmt.Errorf("task name must not be empty")
 	}
-	attrs, err := blockAttributes(block.Body, "order", "bypass", "setup", "script")
-	if err != nil {
-		return Task{}, err
+	content, diagnostics := block.Body.Content(&taskSchema)
+	if diagnostics.HasErrors() {
+		return Task{}, diagnostics
 	}
+	attrs := content.Attributes
 	fields, err := evaluateLiterals(attrs, "order", "bypass")
 	if err != nil {
 		return Task{}, err
@@ -239,6 +248,14 @@ func (l *profileLoader) compileTask(block *hcl.Block, plan *Plan, limit int) (Ta
 	task := Task{Name: name, Order: fields.integer("order", 0), Bypass: fields.boolean("bypass", false)}
 	if fields.err != nil {
 		return Task{}, fields.err
+	}
+	if len(content.Blocks) > 1 {
+		return Task{}, fmt.Errorf("%s: duplicate lock block", content.Blocks[1].DefRange)
+	}
+	if len(content.Blocks) == 1 {
+		if task.Lock, err = decodeLock(content.Blocks[0]); err != nil {
+			return Task{}, fmt.Errorf("%s: lock: %w", content.Blocks[0].DefRange, err)
+		}
 	}
 	if attribute := attrs["setup"]; attribute != nil {
 		value, diagnostics := attribute.Expr.Value(setupContext)

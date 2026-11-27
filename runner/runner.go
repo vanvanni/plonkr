@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"sync"
 
@@ -55,6 +56,36 @@ func Run(ctx context.Context, plan *profile.Plan, opts Options, exec StepExecuto
 			continue
 		}
 
+		// A task whose steps are all flag-gated off does no work, so its lock is
+		// neither probed nor recorded.
+		locked := !task.Lock.IsZero() && hasRunnableStep(task, opts.Flags)
+		if locked && !opts.DryRun && !opts.Force {
+			held, why, err := checkLock(ctx, opts.Locks, task)
+			if err != nil {
+				status, lockErr := StatusFailed, fmt.Errorf("task %q: lock: %w", task.Name, err)
+				if ctxErr := ctx.Err(); ctxErr != nil {
+					status, lockErr = StatusCancelled, ctxErr
+				}
+				r.finishStep(i, 0, status, "", lockErr)
+				r.finishTask(i, status, "", lockErr)
+				return r.abort(status, lockErr)
+			}
+			if held {
+				reason := "bypassed by lock: " + why
+				for j := range task.Steps {
+					r.finishStep(i, j, StatusBypassed, reason, nil)
+				}
+				r.finishTask(i, StatusBypassed, reason, nil)
+				continue
+			}
+		}
+
+		// A dry run never connects, so it can only say that the lock is pending.
+		plannedNote := ""
+		if locked && opts.DryRun {
+			plannedNote = "lock is evaluated when the task runs"
+		}
+
 		for j, step := range task.Steps {
 			if err := ctx.Err(); err != nil {
 				r.finishStep(i, j, StatusCancelled, "", err)
@@ -73,7 +104,7 @@ func Run(ctx context.Context, plan *profile.Plan, opts Options, exec StepExecuto
 				r.send(Event{Kind: Message, Task: i, Step: j, Text: step.Text, Color: step.Color})
 			}
 			if opts.DryRun {
-				r.finishStep(i, j, StatusPlanned, "", nil)
+				r.finishStep(i, j, StatusPlanned, plannedNote, nil)
 				continue
 			}
 			if step.Op == profile.OpLog {
@@ -102,7 +133,18 @@ func Run(ctx context.Context, plan *profile.Plan, opts Options, exec StepExecuto
 			r.finishStep(i, j, StatusCompleted, "", nil)
 		}
 
-		r.finishTask(i, aggregateStatus(opts.DryRun, r.summary.Tasks[i].Counts), "", nil)
+		counts := r.summary.Tasks[i].Counts
+		if locked && !opts.DryRun && counts.Completed > 0 {
+			if err := recordLock(ctx, opts.Locks, task); err != nil {
+				status, lockErr := StatusFailed, fmt.Errorf("task %q: record lock state: %w", task.Name, err)
+				if ctxErr := ctx.Err(); ctxErr != nil {
+					status, lockErr = StatusCancelled, ctxErr
+				}
+				r.finishTask(i, status, "", lockErr)
+				return r.abort(status, lockErr)
+			}
+		}
+		r.finishTask(i, aggregateStatus(opts.DryRun, counts), plannedNote, nil)
 	}
 
 	if totalSteps := finalizeCounts(&r.summary); totalSteps == 0 {
@@ -111,6 +153,29 @@ func Run(ctx context.Context, plan *profile.Plan, opts Options, exec StepExecuto
 		r.summary.Status = aggregateStatus(opts.DryRun, r.summary.Counts)
 	}
 	return r.summary, nil
+}
+
+var errNoLocker = errors.New("runner: no lock store configured")
+
+func checkLock(ctx context.Context, locks Locker, task profile.Task) (bool, string, error) {
+	if locks == nil {
+		return false, "", errNoLocker
+	}
+	return locks.CheckLock(ctx, task)
+}
+
+func recordLock(ctx context.Context, locks Locker, task profile.Task) error {
+	if locks == nil {
+		return errNoLocker
+	}
+	return locks.RecordLock(ctx, task)
+}
+
+// hasRunnableStep reports whether any step of task has all its flags enabled.
+func hasRunnableStep(task profile.Task, flags map[string]bool) bool {
+	return slices.ContainsFunc(task.Steps, func(step profile.Step) bool {
+		return len(step.MissingFlags(flags)) == 0
+	})
 }
 
 // execution tracks one Run: the summary being built and the serialized emitter.

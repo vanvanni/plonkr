@@ -18,8 +18,11 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	if os.Getenv("PLONK_PROV_FAKE_SSH") == "1" {
+	switch os.Getenv("PLONK_PROV_FAKE_SSH") {
+	case "1":
 		os.Exit(runFakeProvisionSSH())
+	case "exec":
+		os.Exit(runLocalExecSSH())
 	}
 	os.Exit(m.Run())
 }

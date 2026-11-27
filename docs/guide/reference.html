@@ -138,10 +138,37 @@ tasks { ... }              # at most one</code></pre>
 <tbody>
 <tr><td><code>order</code></td><td>integer</td><td>required</td><td>Position of the task, 0 or higher. Must be unique within the profile.</td></tr>
 <tr><td><code>bypass</code></td><td>bool</td><td><code>false</code></td><td>Skip this task and report it as bypassed. <code>plonk run --bypass "NAME"</code> does the same for a single run.</td></tr>
+<tr><td><code>lock</code></td><td>block</td><td>none</td><td>Bypass this task when the target already matches. See <a href="#lock">lock</a>.</td></tr>
 <tr><td><code>setup</code></td><td>list</td><td>none</td><td>Managed operations on declared resources. See <a href="#functions">functions</a>.</td></tr>
 <tr><td><code>script</code></td><td>list</td><td>none</td><td>Shell commands as strings, plus <code>run()</code>, <code>flag()</code> and <code>log()</code>. Each string runs in its own remote shell, so a <code>cd</code> does not carry over.</td></tr>
 </tbody></table></div>
 <p>Each task needs at least one step in <code>setup</code> or <code>script</code>.</p>
+<h3 id="lock">lock</h3>
+<p>An optional block inside a task. When it holds, the whole task is bypassed and the run moves on to the next task. Both keys are optional, but at least one is required, and they can be combined. The task is bypassed only when <strong>every</strong> directive you set holds; if any one does not, the task runs.</p>
+<div class="table-wrap"><table>
+<thead><tr><th>Key</th><th>Type</th><th>Holds when</th></tr></thead>
+<tbody>
+<tr><td><code>exists</code></td><td>list of absolute paths</td><td>Every path exists on the target. Nothing is stored.</td></tr>
+<tr><td><code>eval</code></td><td>list of commands</td><td>Each command is run on the target over SSH as the login user, and the results (exit status and standard output) equal those recorded after the task last completed. With no record, the task runs.</td></tr>
+</tbody></table></div>
+<pre><code class="language-hcl">task "Install Go" {
+  order  = 10
+  script = ["./install-go.sh"]
+
+  lock {
+    exists = ["/usr/local/go/bin/go"]
+    eval   = ["/usr/local/go/bin/go version"]
+  }
+}</code></pre>
+<ul>
+<li><strong>When state is recorded.</strong> After the task completes, its <code>eval</code> commands run again and the results are saved. A failed task saves nothing. A failing <code>eval</code> command is not an error: its exit status is part of the result.</li>
+<li><strong>Where.</strong> On the target, in <code>/etc/plonkr/.states/</code>, one private file per profile, written as root or through passwordless sudo. A rebuilt machine has no state, so its tasks run. A lock with only <code>exists</code> needs no state and no privileges.</li>
+<li><strong>Edits.</strong> Changing a <code>lock</code> block discards the saved result for that task, so it runs once more.</li>
+<li><strong>Reporting.</strong> A lock-bypassed task is reported as <em>bypassed</em>, with the reason <code>bypassed by lock</code>. Bypass flags and <code>--bypass</code> take precedence, so a bypassed task never evaluates its lock.</li>
+<li><strong>Overriding.</strong> <code>plonk run --force</code> runs locked tasks anyway and refreshes their saved results. <code>--dry-run</code> does not connect, so it cannot evaluate locks; it notes that they are checked when the task runs.</li>
+<li><strong>Limits.</strong> Locked tasks must have unique names, because the name keys the saved state. <code>eval</code> commands run on every run, so keep them read-only and free of secrets; their output is not logged, but the commands are part of the profile. Running two <code>plonk run</code> commands against the same target and profile at once is not supported.</li>
+</ul>
+<p>Beta: locks have been exercised over real SSH on Ubuntu 24.04 with a non-root login using sudo. Other distributions and native Windows controllers are unverified.</p>
 <h2 id="functions">Functions</h2>
 <div class="table-wrap"><table>
 <thead><tr><th>Function</th><th>Where</th><th>What it does</th></tr></thead>
@@ -189,6 +216,7 @@ tasks { ... }              # at most one</code></pre>
 <a href="#repository">repository</a>
 <a href="#unit">unit</a>
 <a href="#tasks">tasks</a>
+<a href="#lock">lock</a>
 <a href="#functions">Functions</a>
 <a href="#snippets">Snippets</a>
 <a href="#include">Includes</a>

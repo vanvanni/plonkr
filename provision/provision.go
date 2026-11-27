@@ -21,6 +21,8 @@ type Executor struct {
 	SSH  runner.SSH
 	Plan *profile.Plan
 	Keys map[string][]byte
+	// StateDir overrides DefaultStateDir, where task lock state is recorded.
+	StateDir string
 	// ApproveKeyReplacement is called only for a differing existing key.
 	// A nil callback refuses replacement.
 	ApproveKeyReplacement func(context.Context, profile.Repository) error

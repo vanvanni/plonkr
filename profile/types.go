@@ -63,6 +63,7 @@ type Task struct {
 	Name     string
 	Baseline bool
 	Bypass   bool
+	Lock     Lock
 	Steps    []Step
 }
 

@@ -30,11 +30,35 @@ Commands:
 - `plonk run HOST PROFILE [flags]` — execute a profile over OpenSSH.
   - `--dry-run` — preview planned, skipped, and bypassed steps without SSH or reading deploy keys.
   - `--bypass NAME` — bypass a named task (repeatable, case-sensitive exact match; validated against the loaded plan).
+  - `--force` — run tasks even when their `lock` would bypass them; their lock state is still recorded afterwards. An explicit bypass still wins.
   - `--profiles-dir DIR` — override the profiles base directory.
   - `--no-tui` — force plain streaming output instead of the Bubble Tea screen.
   - `--auto-approve` — replace differing target deploy keys without an approval prompt. The warning is still printed. Without this flag, differing keys require `y`/`yes` in a terminal; declining or running unattended leaves the old key untouched. Runs using deploy keys use plain output so warnings and prompts remain visible.
   - `--tty` — allocate a remote PTY for interactive prompts (disables TUI; managed actions still use noninteractive `sudo`/`runuser`).
   - Dynamic profile flags discovered from `flag("name", ...)` are registered automatically; inspect them with `plonk run HOST PROFILE --help`.
+
+## Task locks
+
+A task may carry an optional `lock` block with `exists` (absolute target paths) and/or `eval` (commands run on the target over SSH as the login user). The task is bypassed only when every directive set holds, and the run continues with the next task. It is then reported as `bypassed` with the reason `bypassed by lock: …`.
+
+```hcl
+task "Install Go" {
+  order  = 10
+  script = ["./install-go.sh"]
+  lock {
+    exists = ["/usr/local/go/bin/go"]
+    eval   = ["/usr/local/go/bin/go version"]
+  }
+}
+```
+
+- `exists` holds when every path exists. It stores nothing and needs no privileges.
+- `eval` holds when each command's result (a SHA-256 over exit status and stdout; stderr is ignored) equals the result recorded after the task last completed. No record means the task runs. A failing command is a result, not an error.
+- State is recorded after the task succeeds, by running the `eval` commands again, so it reflects the machine the task produced. A failed task records nothing. A bypassed task (profile, `--bypass`, or lock) records nothing, and a task whose steps are all disabled by flags is neither probed nor recorded.
+- State lives on the target in `/etc/plonkr/.states/<id>.json` (directory `0700`, files `0600`, root-owned), one file per profile name, written atomically as root or through passwordless `sudo -n`. `<id>` is the first 16 hex digits of the SHA-256 of the profile name; the file records the name and, per task name, the lock-definition digest, the result hashes and a timestamp. Editing a `lock` block changes its digest and so invalidates the saved result.
+- Locked task names must be unique across the expanded plan because they key the state. A run per target and profile at a time is assumed; concurrent runs may overwrite each other's state.
+- `--dry-run` never connects, so planned steps only note that the lock is evaluated when the task runs.
+- A probe or state-write failure fails the task and stops the run, like any other step failure.
 
 ## Profile storage & deploy keys
 

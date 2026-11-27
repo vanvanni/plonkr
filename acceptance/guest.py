@@ -393,6 +393,77 @@ snippet "outer" {
         check("1 failed" in result.stdout and "2 pending" in result.stdout, "Failure/pending result counts differ")
         check(not marker.exists(), "Execution continued after failure")
 
+    def task_locks(self):
+        state_dir = "/etc/plonkr/.states"
+
+        def lines(path):
+            return len(path.read_text().splitlines()) if path.exists() else 0
+
+        def state_file(profile):
+            return state_dir + "/" + hashlib.sha256(profile.encode()).hexdigest()[:16] + ".json"
+
+        tool = self.scratch / "lock-tool"
+        version = self.scratch / "lock-version"
+        runs = self.scratch / "lock-runs"
+        after = self.scratch / "lock-after"
+        version.write_text("v1\n")
+        lock = ('    lock {\n      exists = [' + quote(tool) + ']\n      eval = [' + quote("cat " + str(version))
+                + ']\n    }\n')
+        self.write("locks", 'tasks {\n' + task("Locked", ["echo run >> " + str(runs)], 0, lock)
+                   + task("After", ["echo after >> " + str(after)], 1) + '}\n')
+        held = "bypassed by lock: exists and eval unchanged"
+
+        # With no recorded state the task runs, and the state it leaves is recorded.
+        result = self.apply("locks")
+        check(lines(runs) == 1 and held not in result.stdout, "Locked task did not run on the first run")
+        # Once the path exists and eval matches that state, the task is bypassed
+        # and the next task still runs.
+        tool.write_text("x")
+        result = self.apply("locks")
+        check(lines(runs) == 1 and held in result.stdout, "Held lock did not bypass the task")
+        check("1 bypassed" in result.stdout and "1 completed" in result.stdout, "Bypassed lock counts differ")
+        check(lines(after) == 2, "Following task did not run after a bypassed lock")
+
+        # A changed eval result runs the task again and is then recorded.
+        version.write_text("v2\n")
+        self.apply("locks")
+        check(lines(runs) == 2, "Changed eval result did not run the task")
+        self.apply("locks")
+        check(lines(runs) == 2, "Recorded eval result did not hold")
+
+        # --force runs a held task; --dry-run never connects or probes.
+        self.apply("locks", "--force")
+        check(lines(runs) == 3, "--force did not run a held task")
+        result = self.apply("locks", "--dry-run")
+        check("lock is evaluated when the task runs" in result.stdout and lines(runs) == 3, "Dry run lock note differs")
+        self.apply("locks")
+        check(lines(runs) == 3, "State recorded by --force did not hold")
+
+        # --bypass wins over --force.
+        self.apply("locks", "--bypass", "Locked", "--force")
+        check(lines(runs) == 3, "Explicit bypass did not win over --force")
+
+        # State is private, root-owned and written through sudo by the non-root login.
+        mode = self.shell("stat -c '%a %U' " + state_dir + " " + shlex.quote(state_file("locks"))).stdout.split()
+        check(mode == ["700", "root", "600", "root"], f"State ownership or mode differs: {mode}")
+        check("tmp." not in self.shell("ls -A " + state_dir).stdout, "Temporary state file left behind")
+
+        # exists alone keeps no state.
+        self.write("lock-exists", 'tasks {\n' + task("Exists only", ["echo run >> " + str(runs)], 0,
+                   '    lock {\n      exists = [' + quote(tool) + ']\n    }\n') + '}\n')
+        self.apply("lock-exists")
+        check(lines(runs) == 3, "exists-only lock did not bypass")
+        self.shell("test ! -e " + shlex.quote(state_file("lock-exists")))
+        tool.unlink()
+        self.apply("lock-exists")
+        check(lines(runs) == 4, "exists-only lock held without the path")
+
+        # A failed task records nothing, so it is never wrongly bypassed.
+        self.write("lock-fail", 'tasks {\n' + task("Fails", ["exit 3"], 0,
+                   '    lock {\n      eval = [' + quote("cat " + str(version)) + ']\n    }\n') + '}\n')
+        self.apply("lock-fail", expected=3)
+        self.shell("test ! -e " + shlex.quote(state_file("lock-fail")))
+
     def invalid_plan_prevents_changes(self):
         marker = self.scratch / "invalid-plan-executed"
         self.write("invalid", 'tasks {\n' + task("First", ["touch " + str(marker)])
@@ -490,6 +561,7 @@ def main():
             ("key replacement approval and automatic repository host acceptance", suite.key_conflict_and_trust),
             ("dynamic nested flags, both bypass forms, plain output and logs", suite.flags_bypass_and_logs),
             ("profile/snippet chaining and fail-fast result propagation", suite.chaining_and_failure),
+            ("task locks: exists, eval state, force, dry run and private state", suite.task_locks),
             ("whole-plan validation before remote changes", suite.invalid_plan_prevents_changes),
             ("real PTY TUI, remote tty and cancellation", suite.terminal_paths),
         ]:

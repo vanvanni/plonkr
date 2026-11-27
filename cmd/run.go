@@ -32,7 +32,8 @@ Built-in flags:
   --no-tui              Use plain streaming output instead of the terminal UI
   --profiles-dir DIR    Override the profiles base directory
   --bypass NAME         Bypass a named task (repeatable, exact match)
-  --auto-approve        Approve replacement of differing target deploy keys
+  --force               Run tasks even when their lock would bypass them
+  --auto-approve       Approve replacement of differing target deploy keys
 
 Profile flags discovered from flag("name", ...) are added dynamically.
 Run "plonk run HOST PROFILE --help" to inspect flags for a specific profile.`,
@@ -88,7 +89,7 @@ func scanProfilesDir(args []string) (string, bool, error) {
 }
 
 func executeProfile(ctx context.Context, host, profileRef string, plan *profile.Plan, args []string, stdin io.Reader, stdout, stderr io.Writer) error {
-	var dryRun, tty, noTUI, autoApprove bool
+	var dryRun, tty, noTUI, autoApprove, force bool
 	var profilesDir string
 	var bypassList []string
 
@@ -106,6 +107,7 @@ func executeProfile(ctx context.Context, host, profileRef string, plan *profile.
 	runCmd.Flags().BoolVar(&tty, "tty", false, "Allocate a remote terminal for interactive SSH/sudo; disables TUI")
 	runCmd.Flags().BoolVar(&noTUI, "no-tui", false, "Use plain streaming output")
 	runCmd.Flags().BoolVar(&autoApprove, "auto-approve", false, "Approve replacement of differing target deploy keys without prompting")
+	runCmd.Flags().BoolVar(&force, "force", false, "Run tasks even when their lock would bypass them")
 	runCmd.Flags().StringVar(&profilesDir, "profiles-dir", "", "Override the profiles base directory")
 	runCmd.Flags().StringArrayVar(&bypassList, "bypass", nil, "Bypass a named task (repeatable, case-sensitive)")
 
@@ -185,6 +187,8 @@ func executeProfile(ctx context.Context, host, profileRef string, plan *profile.
 			DryRun:      dryRun,
 			Flags:       enabled,
 			BypassTasks: bypassTasks,
+			Force:       force,
+			Locks:       executor,
 		}
 
 		work := func(parent context.Context, emit func(runner.Event)) error {

@@ -38,6 +38,7 @@ Plonkr automates the setup work that comes after creating a machine. Describe us
 - Clone repositories as the intended user using an existing local deploy-key file, copied byte-for-byte.
 - Render and install systemd units and configure the target timezone.
 - Preview a plan before connecting, enable profile-defined flags, or bypass selected tasks.
+- Add a `lock` to a task so it is bypassed when a path already exists or a command's result is unchanged since the last completed run (`--force` overrides).
 - Follow completed, failed, skipped and bypassed work in terminal output and saved logs.
 
 Plonkr runs through your OpenSSH client and requires no agent on the target. Managed operations target Linux; systemd operations require systemd. Windows and Linux controller builds are available from source. Real SSH acceptance has been exercised with a Linux controller in a disposable Ubuntu 24.04 VM; native Windows SSH transport remains unverified.

@@ -76,6 +76,21 @@ type Options struct {
 	DryRun      bool
 	Flags       map[string]bool
 	BypassTasks map[string]bool
+	// Force runs locked tasks even when their lock would bypass them. Their lock
+	// state is still recorded after they complete.
+	Force bool
+	// Locks evaluates and records task locks. It is required for tasks with a
+	// lock unless the run is a dry run.
+	Locks Locker
+}
+
+// Locker evaluates task locks on the target and records their state.
+type Locker interface {
+	// CheckLock reports whether task's lock holds, so the task can be bypassed.
+	// reason briefly names the directives that held.
+	CheckLock(ctx context.Context, task profile.Task) (held bool, reason string, err error)
+	// RecordLock stores the lock state observed after task completed.
+	RecordLock(ctx context.Context, task profile.Task) error
 }
 
 // StepExecutor runs one non-log executable step and streams output to stdout and stderr.

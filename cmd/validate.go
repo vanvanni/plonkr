@@ -160,6 +160,9 @@ func writePlanSummary(out io.Writer, plan *profile.Plan) error {
 		if task.Bypass {
 			suffix = " (bypass)"
 		}
+		if !task.Lock.IsZero() {
+			suffix += " (lock)"
+		}
 		if _, err := fmt.Fprintf(out, "\n%s %s%s\n", label, sanitizeSingleLine(task.Name), suffix); err != nil {
 			return err
 		}
