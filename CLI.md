@@ -49,6 +49,21 @@ Note: if `ssh` connects as a non-root user different from `repository.user`, std
 
 ## Verification status
 
+Keyed repositories get a managed block in the target user's `~/.ssh/config`:
+
+```sshconfig
+Host your-repo.github.com
+  HostName github.com
+  IdentityFile ~/.ssh/plonkr-your-repo.key
+  IdentitiesOnly yes
+```
+
+The alias uses the repository name and the original SSH host. Explicit SSH URL
+ports are retained. Git clones and later pulls use that alias; matching existing
+checkouts are migrated to it. Repeated runs update the managed block without
+duplicating it or deleting unrelated SSH settings. The key is set to `0600`
+immediately when installed, reused or replaced. SSH config is also private (`0600`).
+
 Repository Git connections automatically accept unknown or changed SSH server
 keys and bypass host-key verification. Optional `known_hosts` entries remain valid
 profile data, but are not used to verify these connections. This behavior also

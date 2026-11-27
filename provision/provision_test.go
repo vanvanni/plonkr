@@ -569,7 +569,7 @@ func TestRepoScriptPOSIXExecution(t *testing.T) {
 			User: "deploy", Key: "/local/app.key",
 		}, []byte("test-key"))
 		start := strings.Index(script, "escape_sq()")
-		end := strings.Index(script, "fresh=''")
+		end := strings.Index(script, "# Repository-specific SSH configuration")
 		if start < 0 || end <= start {
 			t.Fatalf("could not locate escape_sq block in script:\n%s", script)
 		}
@@ -665,6 +665,17 @@ func TestRepoScriptPOSIXExecution(t *testing.T) {
 		if err != nil || !bytes.Equal(installed, keyBytes) {
 			t.Fatalf("installed key mismatch: err=%v got=%q", err, installed)
 		}
+		configFile := filepath.Join(base, "home", ".ssh", "config")
+		// This checkout started with the original host URL. Setup must migrate
+		// its saved origin automatically so users keep the original profile URL.
+		origin, err := exec.CommandContext(t.Context(), "git", "-C", dest, "remote", "get-url", "origin").CombinedOutput()
+		if err != nil || strings.TrimSpace(string(origin)) != "git@your-repo.example.test:org/app.git" {
+			t.Fatalf("existing origin was not rewritten to the SSH alias: %v: %s", err, origin)
+		}
+		config, err := os.ReadFile(configFile)
+		if err != nil || !strings.Contains(string(config), "Host your-repo.example.test\n  HostName example.test\n  IdentityFile ~/.ssh/plonkr-your-repo.key") {
+			t.Fatalf("SSH config mismatch: %v: %s", err, config)
+		}
 
 		// Verify core.sshCommand was set directly without wrapper or -F /dev/null.
 		cfgOut, err := exec.CommandContext(t.Context(), "git", "-C", dest, "config", "--get", "core.sshCommand").CombinedOutput()
@@ -679,6 +690,10 @@ func TestRepoScriptPOSIXExecution(t *testing.T) {
 		// 3. Repeat run with identical key succeeds and deduplicates known_hosts.
 		if out, err = runScript(keyBytes); err != nil {
 			t.Fatalf("repeat run failed: %v: %s", err, out)
+		}
+		repeatedConfig, err := os.ReadFile(configFile)
+		if err != nil || !bytes.Equal(config, repeatedConfig) {
+			t.Fatal("repeat run changed or duplicated SSH config", err)
 		}
 		knownData, err := os.ReadFile(filepath.Join(base, "home", ".ssh", "known_hosts"))
 		if err != nil || strings.Count(string(knownData), "example.test") != 1 {

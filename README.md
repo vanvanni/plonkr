@@ -96,6 +96,10 @@ Repository keys reference an absolute file path on your controller. Plonkr prese
 
 Repository Git connections automatically accept unknown or changed SSH host keys, without verifying server identity against `known_hosts`. The controller-to-target connection follows your existing OpenSSH policy.
 
+Each keyed repository gets its own SSH alias, such as `your-repo.github.com`, in
+the target user's `~/.ssh/config`. The alias selects its deploy key; Git uses it
+for cloning and subsequent pulls. Existing unrelated SSH configuration is preserved.
+
 ## Execution behavior
 
 Work runs sequentially and stops at the first failure. There is no automatic rollback. Shell state does not carry between separate script items. Matching existing checkouts are verified; they are not automatically updated. Logs contain commands and output, so avoid printing secrets from profiles.

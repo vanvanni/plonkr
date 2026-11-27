@@ -238,6 +238,14 @@ tasks {
         check(self.shell("sha256sum " + installed).stdout.split()[0] == self.source_digest, "Installed key bytes changed")
         check(hashlib.sha256(self.deploy.read_bytes()).hexdigest() == self.source_digest, "Source key changed")
         check(self.shell("stat -c '%a:%U' " + installed).stdout.strip() == "600:app", "Target key mode/owner differ")
+        ssh_config = self.shell("cat /var/lib/app/.ssh/config").stdout
+        check("Host your-repo.127.0.0.1" in ssh_config and
+              "HostName 127.0.0.1" in ssh_config and
+              "IdentityFile ~/.ssh/plonkr-your-repo.key" in ssh_config,
+              "Repository-specific SSH alias missing")
+        check(self.shell("stat -c '%a:%U' /var/lib/app/.ssh/config").stdout.strip() == "600:app", "SSH config mode/owner differ")
+        origin = self.shell("sudo -n -H -u app git -C /srv/your-repo remote get-url origin").stdout
+        check("your-repo.127.0.0.1" in origin, "Git does not use repository SSH alias")
         self.shell("test ! -e /var/lib/app/.ssh/viac; test ! -e /var/lib/app/.ssh/plonkr")
         check(self.shell("sudo -n -H -u app git -C /srv/your-repo rev-parse HEAD").stdout.strip() == self.commit, "Clone HEAD mismatch")
         unit = Path("/etc/systemd/system/example.service").read_text()
@@ -249,6 +257,8 @@ tasks {
     def rerun_and_pull(self):
         result = self.apply("app-example")
         check("already present and verified" in result.stdout, "Existing checkout was not verified")
+        config = self.shell("cat /var/lib/app/.ssh/config").stdout
+        check(config.count("Host your-repo.127.0.0.1\n") == 1, "Repeated run duplicated SSH alias")
         check("skipped" in result.stdout, "Disabled optional example flags not skipped")
         self.shell("sudo -n -H -u app git -C /srv/your-repo pull --ff-only")
         self.shell("test $(grep -c example-only-replace-me /home/reporter/.ssh/authorized_keys) = 1")

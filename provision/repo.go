@@ -16,6 +16,7 @@ func repoScriptReplacement(r profile.Repository, key []byte, approvedHash string
 	var b strings.Builder
 	b.WriteString("destination=" + quote(r.Path) + "\n")
 	b.WriteString("repo_url=" + quote(r.URL) + "\n")
+	b.WriteString("repo_original_url=" + quote(r.URL) + "\n")
 	b.WriteString("repo_name=" + quote(r.Name) + "\n")
 	b.WriteString("approved_hash=" + quote(approvedHash) + "\n")
 	if r.Ref != "" {
@@ -45,7 +46,8 @@ chmod 600 "$known"
 	b.WriteString(`tmp=''
 clone_tmp=''
 in_place=''
-trap 'if [ -n "$tmp" ]; then rm -f -- "$tmp"; fi; if [ -n "$clone_tmp" ]; then rm -rf -- "$clone_tmp"; fi; if [ -n "$in_place" ]; then find "$destination" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +; fi' EXIT
+config_lock=''
+trap 'if [ -n "$tmp" ]; then rm -f -- "$tmp"; fi; if [ -n "$config_lock" ]; then rmdir "$config_lock"; fi; if [ -n "$clone_tmp" ]; then rm -rf -- "$clone_tmp"; fi; if [ -n "$in_place" ]; then find "$destination" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +; fi' EXIT
 `)
 
 	if r.Key != "" {
@@ -99,6 +101,7 @@ q_key=$(escape_sq "$keyfile")
 q_known=$(escape_sq "$HOME/.ssh/known_hosts")
 ssh_command="ssh -i '$q_key' -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o GlobalKnownHostsFile=/dev/null"
 `)
+		b.WriteString(repositoryConfigScript(r))
 	} else {
 		b.WriteString("ssh_command='ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o GlobalKnownHostsFile=/dev/null'\n")
 	}
@@ -117,7 +120,7 @@ if [ -z "$fresh" ] && { [ -e "$destination" ] || [ -L "$destination" ]; }; then
   inside=$(git -C "$destination" rev-parse --is-inside-work-tree 2>&1 || true)
   [ "$inside" = true ] || { printf 'Checkout destination %s is not a valid git work tree: %s\n' "$destination" "$inside" >&2; exit 1; }
   actual_url=$(git -C "$destination" remote get-url origin 2>/dev/null || true)
-  [ "$actual_url" = "$repo_url" ] || { printf 'Existing repository at %s has origin %s, expected %s\n' "$destination" "$actual_url" "$repo_url" >&2; exit 1; }
+  { [ "$actual_url" = "$repo_url" ] || [ "$actual_url" = "$repo_original_url" ]; } || { printf 'Existing repository at %s has origin %s, expected %s\n' "$destination" "$actual_url" "$repo_url" >&2; exit 1; }
   actual_head=$(git -C "$destination" rev-parse --verify HEAD 2>/dev/null || true)
   [ -n "$actual_head" ] || { printf 'Existing repository at %s has no checked-out HEAD\n' "$destination" >&2; exit 1; }
 `)
@@ -136,6 +139,7 @@ if [ -z "$fresh" ] && { [ -e "$destination" ] || [ -L "$destination" ]; }; then
 		}
 	}
 	if r.Key != "" {
+		b.WriteString("  git -C \"$destination\" remote set-url origin \"$repo_url\"\n")
 		b.WriteString("  git -C \"$destination\" config core.sshCommand \"$ssh_command\"\n")
 	}
 	b.WriteString(`  printf 'Repository %s already present and verified\n' "$repo_name"
