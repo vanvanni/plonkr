@@ -77,6 +77,7 @@ func Open(dir, host, profileRef string, plan *profile.Plan) (*Log, error) {
 }
 
 func (l *Log) write(s string) {
+	s = l.plan.Secrets.Text(s)
 	if l.err != nil || s == "" {
 		return
 	}
@@ -102,6 +103,11 @@ func taskLabel(task profile.Task) string {
 
 // Event records an event and returns a sanitized copy for display.
 func (l *Log) Event(e runner.Event) (runner.Event, error) {
+	e.Text = l.plan.Secrets.Text(e.Text)
+	e.Reason = l.plan.Secrets.Text(e.Reason)
+	if e.Err != nil {
+		e.Err = errors.New(l.plan.Secrets.Text(e.Err.Error()))
+	}
 	e.Reason = singleLine(e.Reason)
 	e.Color = singleLine(e.Color)
 	if e.Kind == runner.Output {
@@ -173,7 +179,7 @@ func (l *Log) Summary(runErr error, dry bool) string {
 		fmt.Fprintf(&b, "  %s: %s (%s)\n", taskLabel(l.plan.Tasks[i]), countText(counts), status)
 	}
 	fmt.Fprintf(&b, "Total: %s\nLog: %s\n", countText(total), safe(l.Path))
-	return b.String()
+	return l.plan.Secrets.Text(b.String())
 }
 
 func (l *Log) overall(runErr error, dry bool) string {

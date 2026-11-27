@@ -191,6 +191,18 @@ func (d *stepDecoder) decode(value cty.Value, flags []string) error {
 	}
 	item := value.EncapsulatedValue().(*action)
 	switch {
+	case len(item.children) > 0 && item.flag == "":
+		for _, child := range item.children {
+			if err := d.decode(child, flags); err != nil {
+				return err
+			}
+		}
+		return nil
+	case item.step.Op == OpPlugin:
+		if d.phase != PhaseSetup {
+			return fmt.Errorf("plugin calls belong in setup")
+		}
+		return d.append(item.step, flags)
 	case item.flag != "":
 		if !slices.Contains(flags, item.flag) {
 			flags = append(slices.Clone(flags), item.flag)

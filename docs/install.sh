@@ -8,7 +8,7 @@
 # is installed. Nothing is changed outside the install directory.
 #
 # Options (arguments, or the environment variable in brackets):
-#   --version VERSION  Install this release, such as 2026.11.0-beta.4
+#   --version VERSION  Install this release, such as 2026.11.0-beta.5
 #                      [PLONK_VERSION]. Default: the newest published release,
 #                      including prereleases.
 #   --dir DIR          Install into DIR [PLONK_INSTALL_DIR]. Default:
@@ -37,7 +37,7 @@ Plonkr installer for Linux (amd64, arm64).
 
 Usage: install.sh [--version VERSION] [--dir DIR] [--uninstall]
 
-  --version VERSION  Install this release, such as 2026.11.0-beta.4
+  --version VERSION  Install this release, such as 2026.11.0-beta.5
                      (PLONK_VERSION). Default: the newest published release,
                      including prereleases.
   --dir DIR          Install into DIR (PLONK_INSTALL_DIR). Default:

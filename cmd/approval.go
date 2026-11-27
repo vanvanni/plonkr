@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/muesli/cancelreader"
+	"github.com/vanvanni/plonkr/plugin"
 	"github.com/vanvanni/plonkr/profile"
 )
 
@@ -29,6 +30,33 @@ func approveKeyReplacement(ctx context.Context, repo profile.Repository, in io.R
 	if _, err := fmt.Fprint(out, "Replace this key? [y/N]: "); err != nil {
 		return err
 	}
+	return readApproval(ctx, in, out)
+}
+
+func approvePlugin(ctx context.Context, a plugin.Approval, in io.Reader, out io.Writer, auto bool) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintf(out, "%s %s %s? This is destructive and may delete all object data. [y/N]: ", a.Action, a.Plugin, a.Definition); err != nil {
+		return err
+	}
+	if auto {
+		_, err := fmt.Fprintln(out, "Approved by --auto-approve.")
+		return err
+	}
+	if !terminalReader(in) {
+		return errors.New("destructive plugin action requires a terminal or --auto-approve")
+	}
+	if err := readApproval(ctx, in, out); err != nil {
+		if errors.Is(err, context.Canceled) {
+			return err
+		}
+		return errors.New("destructive plugin action not approved")
+	}
+	return nil
+}
+
+func readApproval(ctx context.Context, in io.Reader, out io.Writer) error {
 	reader, err := cancelreader.NewReader(in)
 	if err != nil {
 		return fmt.Errorf("prepare approval input: %w", err)

@@ -289,7 +289,7 @@ func (l *profileLoader) compileTask(block *hcl.Block, plan *Plan, limit int) (Ta
 		}
 	}
 	if attribute := attrs["setup"]; attribute != nil {
-		value, diagnostics := attribute.Expr.Value(setupContext)
+		value, diagnostics := attribute.Expr.Value(l.program.phase(PhaseSetup))
 		if diagnostics.HasErrors() {
 			return Task{}, diagnostics
 		}
@@ -299,7 +299,7 @@ func (l *profileLoader) compileTask(block *hcl.Block, plan *Plan, limit int) (Ta
 		}
 	}
 	if attribute := attrs["script"]; attribute != nil {
-		value, diagnostics := attribute.Expr.Value(scriptContext)
+		value, diagnostics := attribute.Expr.Value(l.program.phase(PhaseScript))
 		if diagnostics.HasErrors() {
 			return Task{}, diagnostics
 		}

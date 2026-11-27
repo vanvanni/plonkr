@@ -103,7 +103,7 @@ func Run(ctx context.Context, plan *profile.Plan, opts Options, exec StepExecuto
 			if step.Op == profile.OpLog {
 				r.send(Event{Kind: Message, Task: i, Step: j, Text: step.Text, Color: step.Color})
 			}
-			if opts.DryRun {
+			if opts.DryRun && step.Op != profile.OpPlugin {
 				r.finishStep(i, j, StatusPlanned, plannedNote, nil)
 				continue
 			}
@@ -113,12 +113,16 @@ func Run(ctx context.Context, plan *profile.Plan, opts Options, exec StepExecuto
 			}
 
 			var err error
-			if exec == nil {
+			execute := exec
+			if opts.DryRun {
+				execute = opts.PluginPreview
+			}
+			if execute == nil {
 				err = errors.New("step executor is nil")
 			} else {
 				out := eventWriter{emit: r.send, event: Event{Kind: Output, Task: i, Step: j}}
 				errOut := eventWriter{emit: r.send, event: Event{Kind: Output, Task: i, Step: j, Stderr: true}}
-				err = exec(ctx, step, out, errOut)
+				err = execute(ctx, step, out, errOut)
 			}
 			if err != nil {
 				status := StatusFailed
@@ -130,7 +134,15 @@ func Run(ctx context.Context, plan *profile.Plan, opts Options, exec StepExecuto
 				r.finishTask(i, status, "", stepErr)
 				return r.abort(status, stepErr)
 			}
-			r.finishStep(i, j, StatusCompleted, "", nil)
+			status := StatusCompleted
+			if opts.DryRun {
+				status = StatusPlanned
+			}
+			reason := ""
+			if !opts.DryRun && opts.StepReason != nil {
+				reason = opts.StepReason(step)
+			}
+			r.finishStep(i, j, status, reason, nil)
 		}
 
 		counts := r.summary.Tasks[i].Counts

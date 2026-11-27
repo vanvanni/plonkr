@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"maps"
 	"math/big"
-	"path"
 	"regexp"
 	"slices"
 	"strings"
 	"unicode"
 
 	"github.com/hashicorp/hcl/v2"
+	"github.com/vanvanni/plonkr/posix"
 	"github.com/zclconf/go-cty/cty"
 	"golang.org/x/crypto/ssh"
 )
@@ -19,18 +19,16 @@ import (
 const maxGID int64 = 1<<32 - 2
 
 var (
-	linuxName    = regexp.MustCompile(`^[a-z_][a-z0-9_-]{0,31}$`)
 	timezoneName = regexp.MustCompile(`^[A-Za-z0-9_+-]+(?:/[A-Za-z0-9_+-]+)*$`)
 )
 
 // ValidLinuxName reports whether name is a supported non-root user or group name.
 func ValidLinuxName(name string) bool {
-	return name != "root" && linuxName.MatchString(name)
+	return posix.ValidLinuxName(name)
 }
 
 func safePOSIXPath(value string) bool {
-	return path.IsAbs(value) && path.Clean(value) == value && value != "/" &&
-		!strings.ContainsRune(value, '\\') && !strings.ContainsFunc(value, unicode.IsControl)
+	return posix.SafePath(value)
 }
 
 func decodeConfiguration(block *hcl.Block, plan *Plan) (Task, error) {

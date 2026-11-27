@@ -3,7 +3,7 @@
 | Branch | Purpose | Release tags |
 | --- | --- | --- |
 | `main` | Stable releases | `v2026.11.0`, `v2026.11.1`, etc. |
-| `prerelease` | Candidate builds | `v2026.11.0-alpha.1`, `v2026.11.0-beta.4`, `v2026.11.0-rc.1` |
+| `prerelease` | Candidate builds | `v2026.11.0-alpha.1`, `v2026.11.0-beta.5`, `v2026.11.0-rc.1` |
 | `develop` | Ongoing work; no releases | None |
 
 Plonkr uses **CalVer: `YYYY.MM.PATCH`**, with a four-digit year, a two-digit
@@ -14,7 +14,7 @@ if a candidate rolls into another month, start a new version and candidate count
 
 Candidates append `-alpha.N`, `-beta.N` or `-rc.N`. Tag names add a leading `v`;
 the CLI version omits it. Untagged development builds currently identify as
-`2026.11.0-beta.4`. This is the beta being prepared; no tag or published release
+`2026.11.0-beta.5`. This is the beta being prepared; no tag or published release
 is implied by the source version. These numbers express release dates and sequence, not semantic
 compatibility guarantees; document breaking changes in release notes.
 
@@ -57,7 +57,7 @@ go test -tags multipass ./acceptance -v -count=1 -timeout 45m
 ```
 
 Create an annotated tag on the chosen commit after promotion, for example
-`git tag -a v2026.11.0-beta.4 -m "v2026.11.0-beta.4"` on `prerelease`.
+`git tag -a v2026.11.0-beta.5 -m "v2026.11.0-beta.5"` on `prerelease`.
 Push the branch before pushing the tag so remote ancestry checks can succeed.
 Do not tag `develop`; release checks reject its unpromoted commits.
 

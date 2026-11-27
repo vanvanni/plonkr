@@ -450,7 +450,7 @@ tasks {
 		{"option-like host", []string{"run", "-oProxyCommand=x", good}, "invalid SSH destination"},
 		{"empty host", []string{"run", "", good}, "invalid SSH destination"},
 		{"host with space", []string{"run", "a b", good}, "invalid SSH destination"},
-		{"missing profile argument", []string{"run", "h"}, "usage: plonk run HOST PROFILE"},
+		{"omitted host with SSH work", []string{"run", good}, "needs an SSH target"},
 		{"missing profile file", []string{"run", "h", filepath.Join(env.dir, "nope.hcl")}, "read profile"},
 		{"unknown profile name", []string{"run", "h", "nope", "--profiles-dir", env.dir}, "read profile"},
 		{"unknown flag", []string{"run", "h", good, "--nope"}, "unknown flag"},

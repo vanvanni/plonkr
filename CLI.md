@@ -1,4 +1,45 @@
-# Plonkr CLI (`plonk`) — v2026.11.0-beta.4
+# Plonkr CLI (`plonk`) — v2026.11.0-beta.5
+
+## Plugins (framework)
+
+Beta.5 adds the internal framework for first-party, compiled-in integrations.
+**No provider is included yet.** Proxmox and the `.plonkr` environment file
+remain separate proposed features; their example profiles are not runnable.
+
+Providers register a typed descriptor in `plugins.All()`. Profiles load them
+with `plugin "provider" { ... }`, declare `provider "label" { action = "object" ... }`,
+and call `provider("label", ...)` in `setup`. Settings merge attribute by
+attribute across the include graph; conflicting values fail. Definitions have
+run-wide names per provider, while shared includes are still loaded once.
+Arguments may supply non-static attributes. Inline sensitive string attributes
+are hidden in plans, diffs, errors and journals. Uncalled definitions are checked
+structurally but not decoded. `.plonkr`/`env.*` resolution is not included.
+
+Object actions read by identity, create absent objects, accept matching objects,
+update mutable differences, or replace when an immutable attribute changes.
+`ensure = "absent"` explicitly deletes an object; removing a definition does
+nothing. Deletion, replacement and destructive operations require default-no
+terminal approval or `--auto-approve`. Identity mismatches fail without changes.
+A replacement deletes before creating; a failed creation leaves the object absent.
+There is no state file, orphan cleanup or rollback.
+
+`validate` stays fully offline. `--dry-run` may connect to a provider API to
+read objects and compare them, but never mutates objects, prompts for destructive
+approval or uses target SSH. Operation actions are only planned. Bypassed or
+flag-disabled steps do not connect. Successfully connected clients close even
+on failure or cancellation. Plugin runs use plain output to keep approvals
+visible. Plugin calls buffer up to 1 MiB of output before redaction (and flush
+their sanitized diff before approval). Core SSH output streams through a
+redactor that handles credentials split across writes.
+
+`plonk run PROFILE [flags]` is accepted for controller-only profiles (plugin,
+`wait` and `log` steps). Any SSH operation or task lock still requires
+`plonk run HOST PROFILE`, including disabled steps. A plugin attempting target
+work without HOST fails; during dry-run its target handle always refuses SSH.
+
+The offline plugin tests exercise lifecycle branches with a fake HTTP API;
+there is no claim of live Proxmox verification. `plugin/plugintest` provides HCL
+decoding, target recording and approval recording helpers for future providers.
 
 ## Waiting steps
 

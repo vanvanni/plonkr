@@ -9,12 +9,15 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/vanvanni/plonkr/plugin"
 	"github.com/zclconf/go-cty/cty"
 )
 
 // Program is a parsed, structurally checked profile graph. Bind resolves its inputs
 // into a fully validated Plan. Sources are read once per preparation.
 type Program struct {
+	plugins      plugin.Set
+	definitions  map[string]map[string]pluginBlock
 	base         string
 	entry        string
 	entryName    string
@@ -25,9 +28,10 @@ type Program struct {
 }
 
 type profileDocument struct {
-	body      *hclsyntax.Body
-	arguments []Argument
-	includes  []profileInclude
+	pluginBlocks []*hclsyntax.Block
+	body         *hclsyntax.Body
+	arguments    []Argument
+	includes     []profileInclude
 }
 
 type profileInclude struct {
@@ -43,15 +47,21 @@ func (p *Program) FlagNames() []string { return slices.Sorted(maps.Keys(p.flags)
 
 // Prepare parses a profile and checks all referenced argument contracts without
 // requiring answers. File references remain confined beneath base.
-func Prepare(source []byte, filename, base string) (*Program, error) {
+func Prepare(source []byte, filename, base string, sets ...plugin.Set) (*Program, error) {
 	filename = filepath.Clean(filename)
 	if protectedMetadata(filepath.Base(filename)) {
 		return nil, fmt.Errorf("refusing Syncthing metadata path")
 	}
 	p := &Program{base: base, entry: filename, documents: map[string]*profileDocument{}, flags: map[string]bool{}, snippetDepth: map[string]int{}}
+	if len(sets) > 0 {
+		p.plugins = sets[0]
+	}
 	l := profileLoader{base: base}
 	defer l.close()
 	if err := p.readDocument(&l, source, filename, nil); err != nil {
+		return nil, err
+	}
+	if err := p.checkPlugins(); err != nil {
 		return nil, err
 	}
 	return p, nil
@@ -65,7 +75,7 @@ func protectedMetadata(name string) bool {
 }
 
 // PrepareProfile reads a named profile under base, then prepares its graph.
-func PrepareProfile(name, base string) (*Program, error) {
+func PrepareProfile(name, base string, sets ...plugin.Set) (*Program, error) {
 	name = strings.TrimSuffix(name, ".hcl")
 	if !validProfileReference(name) {
 		return nil, fmt.Errorf("invalid profile reference %q: use a profile name", name)
@@ -80,7 +90,7 @@ func PrepareProfile(name, base string) (*Program, error) {
 	if err != nil {
 		return nil, fmt.Errorf("read profile %q (use ./ for a relative file path): %w", name, err)
 	}
-	p, err := Prepare(source, filepath.Join(base, name+".hcl"), base)
+	p, err := Prepare(source, filepath.Join(base, name+".hcl"), base, sets...)
 	if err != nil {
 		return nil, err
 	}
@@ -118,6 +128,12 @@ func (p *Program) readDocument(l *profileLoader, source []byte, filename string,
 		return err
 	}
 	doc := &profileDocument{body: body, arguments: arguments, includes: []profileInclude{}}
+	for _, b := range body.Blocks {
+		_, known := p.plugins.Get(b.Type)
+		if b.Type == "plugin" || known {
+			doc.pluginBlocks = append(doc.pluginBlocks, b)
+		}
+	}
 	if attr := body.Attributes["include"]; attr != nil {
 		fields, err := evaluateLiterals(hcl.Attributes{"include": attr.AsHCLAttribute()}, "include")
 		if err != nil {
@@ -237,9 +253,9 @@ func (p *Program) checkBody(l *profileLoader, body *hclsyntax.Body, ctx *hcl.Eva
 		eval := ctx.NewChild()
 		switch attr.Name {
 		case "setup":
-			eval.Functions = setupContext.Functions
+			eval.Functions = p.phase(PhaseSetup).Functions
 		case "script", "commands":
-			eval.Functions = scriptContext.Functions
+			eval.Functions = p.phase(PhaseScript).Functions
 		}
 		if _, diags := attr.Expr.Value(eval); diags.HasErrors() {
 			return diags
@@ -421,7 +437,7 @@ func (d *profileDocument) stripped() *hclsyntax.Body {
 	body.Attributes = maps.Clone(d.body.Attributes)
 	body.Blocks = hclsyntax.Blocks{}
 	for _, block := range d.body.Blocks {
-		if block.Type != "arguments" && block.Type != "include" {
+		if block.Type != "arguments" && block.Type != "include" && !slices.Contains(d.pluginBlocks, block) {
 			body.Blocks = append(body.Blocks, block)
 		}
 	}
@@ -449,7 +465,14 @@ func (p *Program) Bind(supplied map[string]cty.Value) (*Plan, error) {
 		name = p.entryName
 	}
 	loaded, err := l.compile(p.entry, []string{name})
-	return validatePlan(loaded, err)
+	plan, err := validatePlan(loaded, err)
+	if err != nil {
+		return nil, err
+	}
+	if err = p.bindPlugins(plan, l.bindings); err != nil {
+		return nil, err
+	}
+	return plan, nil
 }
 
 // scopedBody supplies args to existing decoders without changing their strict

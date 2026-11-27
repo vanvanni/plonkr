@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -9,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/vanvanni/plonkr/plugins"
 	"github.com/vanvanni/plonkr/profile"
 	"github.com/vanvanni/plonkr/ui"
 )
@@ -49,6 +51,7 @@ func newValidateCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			defer plan.ClosePlugins()
 			return writePlanSummary(cmd.OutOrStdout(), plan)
 		},
 	}
@@ -81,7 +84,7 @@ func loadProgramRef(ref, profilesDir string, explicitDir bool) (*profile.Program
 		if isExplicitPath(ref) {
 			return prepareProfileFile(ref, base)
 		}
-		return profile.PrepareProfile(ref, base)
+		return profile.PrepareProfile(ref, base, plugins.All())
 	}
 
 	if isExplicitPath(ref) {
@@ -92,7 +95,7 @@ func loadProgramRef(ref, profilesDir string, explicitDir bool) (*profile.Program
 	if err != nil {
 		return nil, err
 	}
-	return profile.PrepareProfile(ref, base)
+	return profile.PrepareProfile(ref, base, plugins.All())
 }
 
 func prepareProfileFile(path, base string) (*profile.Program, error) {
@@ -100,7 +103,7 @@ func prepareProfileFile(path, base string) (*profile.Program, error) {
 	if err != nil {
 		return nil, err
 	}
-	return profile.Prepare(source, path, base)
+	return profile.Prepare(source, path, base, plugins.All())
 }
 
 func isExplicitPath(ref string) bool {
@@ -166,6 +169,16 @@ func sanitizeSingleLine(s string) string {
 }
 
 func writePlanSummary(out io.Writer, plan *profile.Plan) error {
+	var buffer bytes.Buffer
+	defer func() { clear(buffer.Bytes()) }()
+	if err := writePlanSummaryRaw(&buffer, plan); err != nil {
+		return err
+	}
+	_, err := io.WriteString(out, plan.Secrets.Text(buffer.String()))
+	return err
+}
+
+func writePlanSummaryRaw(out io.Writer, plan *profile.Plan) error {
 	name := sanitizeSingleLine(plan.Name)
 	if name == "" {
 		name = "(unnamed)"

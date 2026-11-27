@@ -73,9 +73,11 @@ type Event struct {
 
 // Options configures plan execution.
 type Options struct {
-	DryRun      bool
-	Flags       map[string]bool
-	BypassTasks map[string]bool
+	PluginPreview StepExecutor
+	StepReason    func(profile.Step) string
+	DryRun        bool
+	Flags         map[string]bool
+	BypassTasks   map[string]bool
 	// Force runs locked tasks even when their lock would bypass them. Their lock
 	// state is still recorded after they complete.
 	Force bool

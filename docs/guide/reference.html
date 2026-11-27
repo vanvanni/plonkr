@@ -108,7 +108,14 @@ plonk run my-host ./examples/arguments.hcl --arg app_name=api --dry-run</code></
 <p>Use inputs in configuration values, repository fields, unit <code>vars</code> and task bodies, including locks. Block labels, include/snippet/flag names and unit <code>source</code> remain static. Use <code>shellquote(args.name)</code> for one complete POSIX shell argument, without adding surrounding quotes. Raw interpolation does not provide shell quoting. Rendered values can appear in previews, commands, logs and target output; inputs are not a secret store.</p>
 <p>HCL preserves the type of a single-value interpolation: <code>"${args.port}"</code> remains numeric when <code>port</code> is an integer. Unit <code>vars</code> require strings. Interpolate numbers into complete strings, for example <code>exec_start = "/usr/bin/server --port ${args.port}"</code>.</p>
 <p>Verified on Ubuntu 24.04 with Go 1.26.0: all 17 Multipass scenario groups and Linux race tests pass, including real terminal retries, defaults, cancellation, TUI startup after questions and literal shell quoting. Native Windows console interaction and SSH transport remain unverified.</p>
+<h2 id="plugins">Plugins</h2>
+<p>Beta.5 includes the internal framework for first-party compiled-in integrations. <strong>No provider ships yet.</strong> Proxmox and the <code>.plonkr</code> environment file remain proposals; provider examples cannot run in this build.</p>
+<p>The framework loads settings with <code>plugin "provider" { ... }</code>, accepts named definitions with <code>provider "label" { action = "object" ... }</code>, and calls them in order with <code>provider("label", ...)</code> in <code>setup</code>. Settings merge across includes; conflicting values and duplicate definition names fail before execution. Sensitive inline string attributes are redacted.</p>
+<p>Object actions create, update, replace or explicitly delete with <code>ensure = "absent"</code>. Identity mismatches fail. Every delete, replacement or destructive operation requires terminal approval or <code>--auto-approve</code>. Removing a definition never deletes anything; there is no state file or rollback.</p>
+<p><code>validate</code> is offline. A plugin dry run may read its external API and show differences, but never modifies objects or uses SSH. Bypassed and flag-disabled steps do not connect. Plugin runs use plain output. Plugin calls buffer up to 1 MiB before redaction and show their sanitized diff before approval; core SSH output streams through a redactor that handles credentials split across writes.</p>
+<p><code>plonk run PROFILE</code> omits HOST for profiles containing only plugin, controller wait and log steps. Profiles with SSH work or task locks require <code>plonk run HOST PROFILE</code>, even when those steps are disabled.</p>
 <h2 id="configuration">configuration</h2>
+<p>For controller integrations, see the <a href="#plugins">plugin framework</a>.</p>
 <p>Declares the accounts and timezone the machine should have. Groups and users with <code>create = true</code> (the default) and the timezone become an automatic first task called <strong>Configuration</strong>, which runs before your own tasks in this order: groups, users, timezone.</p>
 <div class="table-wrap"><table>
 <thead><tr><th>Key</th><th>Type</th><th>What it does</th></tr></thead>
@@ -293,6 +300,7 @@ plonk run my-host ./examples/arguments.hcl --arg app_name=api --dry-run</code></
 <aside class="toc" aria-label="On this page"><h4>On this page</h4><nav><a href="#overview">Profile reference</a>
 <a href="#top-level">Top-level keys</a>
 <a href="#arguments">Arguments</a>
+<a href="#plugins">Plugins</a>
 <a href="#configuration">configuration</a>
 <a href="#repository">repository</a>
 <a href="#unit">unit</a>

@@ -2,6 +2,8 @@
 package profile
 
 import (
+	"github.com/vanvanni/plonkr/plugin"
+	"github.com/vanvanni/plonkr/secret"
 	"maps"
 	"slices"
 	"time"
@@ -11,6 +13,7 @@ import (
 type Phase string
 
 const (
+	OpPlugin    Op    = "plugin"
 	PhaseSetup  Phase = "setup"
 	PhaseScript Phase = "script"
 )
@@ -42,6 +45,7 @@ func (o Op) String() string {
 
 // Step is one compiled action inside a task.
 type Step struct {
+	Plugin   string
 	Phase    Phase
 	Op       Op
 	Text     string
@@ -112,13 +116,16 @@ type Unit struct {
 
 // Plan is the validated, fully expanded execution plan for a profile.
 type Plan struct {
-	Name         string
-	Timezone     string
-	Groups       map[string]Group
-	Users        map[string]User
-	Repositories map[string]Repository
-	Units        map[string]Unit
-	Tasks        []Task
+	Definitions    map[string]map[string]Definition
+	PluginSessions map[string]*plugin.Session
+	Secrets        *secret.Redactor
+	Name           string
+	Timezone       string
+	Groups         map[string]Group
+	Users          map[string]User
+	Repositories   map[string]Repository
+	Units          map[string]Unit
+	Tasks          []Task
 }
 
 // FlagNames returns the sorted set of unique profile flags referenced by steps in the plan.

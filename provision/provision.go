@@ -12,16 +12,21 @@ import (
 	"strings"
 	"time"
 
+	"github.com/vanvanni/plonkr/plugin"
+	"github.com/vanvanni/plonkr/posix"
 	"github.com/vanvanni/plonkr/profile"
 	"github.com/vanvanni/plonkr/runner"
+	"github.com/vanvanni/plonkr/secret"
 )
 
 // Executor runs compiled plan steps over SSH using resources from Plan and prepared Keys.
 // The caller retains ownership of Keys and clearing any sensitive buffers after the run.
 type Executor struct {
-	SSH  runner.SSH
-	Plan *profile.Plan
-	Keys map[string][]byte
+	DryRun        bool
+	ApprovePlugin func(context.Context, plugin.Approval) error
+	SSH           runner.SSH
+	Plan          *profile.Plan
+	Keys          map[string][]byte
 	// StateDir overrides DefaultStateDir, where task lock state is recorded.
 	StateDir string
 	// ApproveKeyReplacement is called only for a differing existing key.
@@ -31,11 +36,26 @@ type Executor struct {
 
 // Execute dispatches one non-log step to SSH transport.
 func (e Executor) Execute(ctx context.Context, step profile.Step, stdout, stderr io.Writer) error {
+	if e.Plan != nil && len(e.Plan.PluginSessions) > 0 && step.Op != profile.OpPlugin {
+		out, errOut := secret.NewWriter(stdout, e.Plan.Secrets), secret.NewWriter(stderr, e.Plan.Secrets)
+		err := e.execute(ctx, step, out, errOut)
+		outErr, writeErr := out.Flush(), errOut.Flush()
+		if err != nil && !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) {
+			err = errors.New(e.Plan.Secrets.Text(err.Error()))
+		}
+		return errors.Join(err, outErr, writeErr)
+	}
+	return e.execute(ctx, step, stdout, stderr)
+}
+
+func (e Executor) execute(ctx context.Context, step profile.Step, stdout, stderr io.Writer) error {
 	if e.Plan == nil {
 		return errors.New("provision: execution plan is nil")
 	}
 
 	switch step.Op {
+	case profile.OpPlugin:
+		return e.executePlugin(ctx, step, stdout)
 	case profile.OpWait, profile.OpWaitSSH, profile.OpWaitUntil:
 		return executeWait(ctx, step, stdout, realWaitClock{}, func(ctx context.Context, command string, remaining time.Duration, out, errOut io.Writer) error {
 			ssh := e.SSH
@@ -126,24 +146,9 @@ fi
 `
 }
 
-func quote(s string) string {
-	return "'" + strings.ReplaceAll(s, "'", `'"'"'`) + "'"
-}
-
-func asRoot(script string) string {
-	qScript := quote(script)
-	return `if [ "$(id -u)" = 0 ]; then sh -ec ` + qScript + `; else sudo -n -- sh -ec ` + qScript + `; fi`
-}
-
-func asUser(user, script string) string {
-	qUser := quote(user)
-	// runuser and sudo keep the caller's directory, which the target user may not be
-	// allowed to enter (for example /root).
-	qScript := quote("cd /\n" + script)
-	return `if [ "$(id -un)" = ` + qUser + ` ]; then sh -ec ` + qScript +
-		`; elif [ "$(id -u)" = 0 ]; then target_home=$(getent passwd ` + qUser + ` | cut -d: -f6); runuser -u ` + qUser + ` -- env HOME="$target_home" sh -ec ` + qScript +
-		`; else sudo -n -H -u ` + qUser + ` -- sh -ec ` + qScript + `; fi`
-}
+func quote(s string) string     { return posix.Quote(s) }
+func asRoot(s string) string    { return posix.AsRoot(s) }
+func asUser(u, s string) string { return posix.AsUser(u, s) }
 
 const validateHome = `nl='
 '

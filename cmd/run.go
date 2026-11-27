@@ -12,6 +12,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
+	"github.com/vanvanni/plonkr/plugin"
 	"github.com/vanvanni/plonkr/profile"
 	"github.com/vanvanni/plonkr/provision"
 	"github.com/vanvanni/plonkr/runlog"
@@ -21,19 +22,19 @@ import (
 
 func newRunCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:                "run HOST PROFILE [flags]",
-		Short:              "Execute a profile against an existing machine over SSH",
+		Use:                "run [HOST] PROFILE [flags]",
+		Short:              "Execute a profile, with an SSH host when needed",
 		DisableFlagParsing: true,
-		Long: `Execute an expanded profile against an existing machine over OpenSSH.
+		Long: `Execute an expanded profile. HOST is optional for controller-only profiles.
 
 Built-in flags:
-  --dry-run             Preview planned, skipped, and bypassed steps without SSH
+  --dry-run             Preview without SSH; plugin objects use read-only API calls
   --tty                 Allocate a remote terminal for interactive prompts (disables TUI)
   --no-tui              Use plain streaming output instead of the terminal UI
   --profiles-dir DIR    Override the profiles base directory
   --bypass NAME         Bypass a named task (repeatable, exact match)
   --force               Run tasks even when their lock would bypass them
-  --auto-approve       Approve replacement of differing target deploy keys
+  --auto-approve        Approve key replacement and destructive plugin actions
   --arg NAME=VALUE      Supply a profile argument (repeatable)
 
 Profile flags discovered from flag("name", ...) are added dynamically.
@@ -42,14 +43,19 @@ Run "plonk run HOST PROFILE --help" to inspect flags for a specific profile.`,
 			if len(args) == 0 || args[0] == "-h" || args[0] == "--help" || args[0] == "help" {
 				return cmd.Help()
 			}
-			if len(args) < 2 {
-				return errors.New("usage: plonk run HOST PROFILE [flags]")
+			host, profileRef, rest := "", args[0], args[1:]
+			if len(args) > 1 && !strings.HasPrefix(args[1], "-") {
+				host, profileRef, rest = args[0], args[1], args[2:]
+				if err := runner.ValidateHost(host); err != nil {
+					return err
+				}
 			}
-			host, profileRef := args[0], args[1]
-			if err := runner.ValidateHost(host); err != nil {
-				return err
+			if host != "" {
+				if err := runner.ValidateHost(host); err != nil {
+					return err
+				}
 			}
-			profilesDir, explicitDir, err := scanProfilesDir(args[2:])
+			profilesDir, explicitDir, err := scanProfilesDir(rest)
 			if err != nil {
 				return err
 			}
@@ -57,7 +63,7 @@ Run "plonk run HOST PROFILE --help" to inspect flags for a specific profile.`,
 			if err != nil {
 				return err
 			}
-			return executeProfile(cmd.Context(), host, profileRef, nil, args[2:], cmd.InOrStdin(), cmd.OutOrStdout(), cmd.ErrOrStderr(), program)
+			return executeProfile(cmd.Context(), host, profileRef, nil, rest, cmd.InOrStdin(), cmd.OutOrStdout(), cmd.ErrOrStderr(), program)
 		},
 	}
 }
@@ -110,10 +116,10 @@ func executeProfile(ctx context.Context, host, profileRef string, plan *profile.
 	runCmd.SetIn(stdin)
 	runCmd.SetOut(stdout)
 	runCmd.SetErr(stderr)
-	runCmd.Flags().BoolVar(&dryRun, "dry-run", false, "Preview planned, skipped, and bypassed steps without connecting")
+	runCmd.Flags().BoolVar(&dryRun, "dry-run", false, "Preview without SSH; plugin objects use read-only API calls")
 	runCmd.Flags().BoolVar(&tty, "tty", false, "Allocate a remote terminal for interactive SSH/sudo; disables TUI")
 	runCmd.Flags().BoolVar(&noTUI, "no-tui", false, "Use plain streaming output")
-	runCmd.Flags().BoolVar(&autoApprove, "auto-approve", false, "Approve replacement of differing target deploy keys without prompting")
+	runCmd.Flags().BoolVar(&autoApprove, "auto-approve", false, "Approve key replacement and destructive plugin actions without prompting")
 	runCmd.Flags().BoolVar(&force, "force", false, "Run tasks even when their lock would bypass them")
 	runCmd.Flags().StringVar(&profilesDir, "profiles-dir", "", "Override the profiles base directory")
 	runCmd.Flags().StringArrayVar(&bypassList, "bypass", nil, "Bypass a named task (repeatable, case-sensitive)")
@@ -145,6 +151,10 @@ func executeProfile(ctx context.Context, host, profileRef string, plan *profile.
 			if err != nil {
 				return fmt.Errorf("preflight: %w; no SSH connection was made", err)
 			}
+		}
+		defer plan.ClosePlugins()
+		if host == "" && plan.NeedsTarget() {
+			return errors.New("this profile needs an SSH target; use plonk run HOST PROFILE")
 		}
 		enabled := make(map[string]bool, len(flagNames))
 		for _, name := range flagNames {
@@ -203,21 +213,26 @@ func executeProfile(ctx context.Context, host, profileRef string, plan *profile.
 		if tty {
 			ssh.Stdin = stdin
 		}
-		executor := provision.Executor{SSH: ssh, Plan: plan, Keys: keys,
+		executor := provision.Executor{SSH: ssh, Plan: plan, Keys: keys, DryRun: dryRun,
+			ApprovePlugin: func(ctx context.Context, a plugin.Approval) error {
+				return approvePlugin(ctx, a, stdin, stderr, autoApprove)
+			},
 			ApproveKeyReplacement: func(ctx context.Context, repo profile.Repository) error {
 				return approveKeyReplacement(ctx, repo, stdin, stderr, autoApprove)
 			},
 		}
 		// Keep replacement warnings and prompts visible outside an alternate screen.
-		if len(keys) > 0 {
+		if len(keys) > 0 || len(plan.PluginSessions) > 0 {
 			noTUI = true
 		}
 		opts := runner.Options{
-			DryRun:      dryRun,
-			Flags:       enabled,
-			BypassTasks: bypassTasks,
-			Force:       force,
-			Locks:       executor,
+			PluginPreview: executor.Preview,
+			StepReason:    executor.StepReason,
+			DryRun:        dryRun,
+			Flags:         enabled,
+			BypassTasks:   bypassTasks,
+			Force:         force,
+			Locks:         executor,
 		}
 
 		work := func(parent context.Context, emit func(runner.Event)) error {
@@ -239,6 +254,7 @@ func executeProfile(ctx context.Context, host, profileRef string, plan *profile.
 					emit(clean)
 				}
 			})
+			runErr = errors.Join(runErr, plan.CloseConnections())
 			if logErr != nil {
 				// The cancellation was ours: report a log failure, not a user abort.
 				if parent.Err() == nil && errors.Is(runErr, context.Canceled) {
