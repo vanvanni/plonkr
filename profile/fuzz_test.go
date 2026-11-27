@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 	"unicode"
 )
 
@@ -135,6 +136,10 @@ func checkStepInvariants(t *testing.T, plan *Plan, step Step) {
 		}
 	}
 	switch step.Op {
+	case OpWait, OpWaitSSH, OpWaitUntil:
+		if step.Duration < time.Second || step.Duration > time.Hour || step.Duration%time.Second != 0 {
+			t.Fatalf("invalid wait duration %s", step.Duration)
+		}
 	case OpShell:
 		if step.Phase != PhaseScript || strings.TrimSpace(step.Text) == "" || strings.ContainsRune(step.Text, 0) {
 			t.Fatalf("shell step %+v", step)

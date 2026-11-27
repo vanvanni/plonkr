@@ -40,6 +40,7 @@ type model struct {
 	cancel               context.CancelFunc
 	events               <-chan tea.Msg
 	stop                 <-chan struct{}
+	waitStarted          time.Time
 }
 
 func newModel(host string, plan *profile.Plan, cancel context.CancelFunc) *model {
@@ -128,6 +129,11 @@ func (m *model) event(e runner.Event) {
 			return
 		}
 		if e.Kind == runner.StepStarted {
+			m.waitStarted = time.Time{}
+			op := m.plan.Tasks[e.Task].Steps[e.Step].Op
+			if op == profile.OpWait || op == profile.OpWaitSSH || op == profile.OpWaitUntil {
+				m.waitStarted = time.Now()
+			}
 			// log() messages are not commands; they already appear in the output.
 			m.command = ""
 			if m.plan.Tasks[e.Task].Steps[e.Step].Op != profile.OpLog {
@@ -135,6 +141,7 @@ func (m *model) event(e runner.Event) {
 			}
 			task.steps[e.Step] = runner.StatusRunning
 		} else {
+			m.waitStarted = time.Time{}
 			task.steps[e.Step] = e.Status
 		}
 	case runner.TaskDone:
@@ -281,7 +288,11 @@ func (m *model) View() string {
 		lines = append(lines, muted.Render(fmt.Sprintf("  … %d later tasks", len(m.tasks)-end)))
 	}
 	if m.command != "" {
-		lines = append(lines, "", accent.Render("$ ")+m.command)
+		command := m.command
+		if !m.waitStarted.IsZero() {
+			command += " (" + time.Since(m.waitStarted).Truncate(time.Second).String() + " elapsed)"
+		}
+		lines = append(lines, "", accent.Render("$ ")+command)
 	}
 	output := strings.Split(strings.TrimSuffix(m.tail, "\n"), "\n")
 	available := max(1, m.height-len(lines)-3)

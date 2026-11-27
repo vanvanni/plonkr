@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"time"
 
 	"github.com/vanvanni/plonkr/profile"
 	"github.com/vanvanni/plonkr/runner"
@@ -35,6 +36,12 @@ func (e Executor) Execute(ctx context.Context, step profile.Step, stdout, stderr
 	}
 
 	switch step.Op {
+	case profile.OpWait, profile.OpWaitSSH, profile.OpWaitUntil:
+		return executeWait(ctx, step, stdout, realWaitClock{}, func(ctx context.Context, command string, remaining time.Duration, out, errOut io.Writer) error {
+			ssh := e.SSH
+			ssh.ConnectTimeout = min(10*time.Second, remaining)
+			return ssh.ExecuteInput(ctx, command, nil, out, errOut)
+		})
 	case profile.OpShell:
 		return e.SSH.Execute(ctx, step.Text, stdout, stderr)
 	case profile.OpGroup:

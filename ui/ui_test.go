@@ -43,6 +43,21 @@ func TestMessageText(t *testing.T) {
 	}
 }
 
+func TestWaitElapsedDisplay(t *testing.T) {
+	plan := &profile.Plan{Tasks: []profile.Task{{Name: "Ready", Steps: []profile.Step{{Op: profile.OpWaitSSH}}}}}
+	m := newModel("host", plan, func() {})
+	m.event(runner.Event{Kind: runner.TaskStarted, Task: 0})
+	m.event(runner.Event{Kind: runner.StepStarted, Task: 0, Step: 0, Text: "wait_ssh 1m"})
+	m.waitStarted = time.Now().Add(-3 * time.Second)
+	if !strings.Contains(m.View(), "3s elapsed") {
+		t.Fatal(m.View())
+	}
+	m.event(runner.Event{Kind: runner.StepDone, Task: 0, Step: 0, Status: runner.StatusCompleted})
+	if strings.Contains(m.View(), "elapsed") {
+		t.Fatal("completed timer is live")
+	}
+}
+
 func TestViewStatusAndCounts(t *testing.T) {
 	t.Setenv("NO_COLOR", "1")
 	for _, tc := range []struct {

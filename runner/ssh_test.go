@@ -148,6 +148,13 @@ func TestSSHExecuteAndExecuteInput(t *testing.T) {
 		wantStdin string
 	}{
 		{
+			name:     "readiness input bounds connection and overrides tty",
+			ssh:      SSH{Host: "my-vm", TTY: true, ConnectTimeout: 3 * time.Second},
+			useInput: true,
+			command:  "true",
+			wantArgs: []string{"-T", "-o", "BatchMode=yes", "-o", "ConnectTimeout=3", "--", "my-vm", "sh -ec 'true'"},
+		},
+		{
 			name:      "noninteractive execute quotes single quotes and newlines",
 			ssh:       SSH{Host: "user@alias", Stdin: strings.NewReader("from-struct")},
 			command:   "printf '%s\\n' \"it's ok\"\necho done",

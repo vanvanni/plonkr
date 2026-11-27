@@ -34,6 +34,11 @@ func phaseContext(phase Phase) *hcl.EvalContext {
 		"flag": actionFunction(2, true, flagAction),
 		"log":  actionFunction(1, true, logAction),
 	}
+	for _, op := range []Op{OpWait, OpWaitSSH, OpWaitUntil} {
+		functions[string(op)] = actionFunction(1, true, func(args []cty.Value) (action, error) {
+			return waitAction(op, args)
+		})
+	}
 	for _, op := range []Op{OpGroup, OpUser, OpRepo, OpUnit} {
 		if phase == PhaseSetup {
 			functions[string(op)] = actionFunction(1, false, func(args []cty.Value) (action, error) {
@@ -213,7 +218,7 @@ func (d *stepDecoder) decode(value cty.Value, flags []string) error {
 			}
 		}
 		return nil
-	case item.step.Op == OpLog:
+	case item.step.Op == OpLog, item.step.Op == OpWait, item.step.Op == OpWaitSSH, item.step.Op == OpWaitUntil:
 		return d.append(item.step, flags)
 	default:
 		if d.phase != PhaseSetup {

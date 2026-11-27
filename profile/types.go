@@ -4,6 +4,7 @@ package profile
 import (
 	"maps"
 	"slices"
+	"time"
 )
 
 // Phase identifies whether a step belongs to managed setup or shell script work.
@@ -19,13 +20,16 @@ const (
 type Op string
 
 const (
-	OpShell    Op = ""
-	OpGroup    Op = "group"
-	OpUser     Op = "user"
-	OpTimezone Op = "timezone"
-	OpRepo     Op = "repo"
-	OpUnit     Op = "unit"
-	OpLog      Op = "log"
+	OpShell     Op = ""
+	OpGroup     Op = "group"
+	OpUser      Op = "user"
+	OpTimezone  Op = "timezone"
+	OpRepo      Op = "repo"
+	OpUnit      Op = "unit"
+	OpLog       Op = "log"
+	OpWait      Op = "wait"
+	OpWaitSSH   Op = "wait_ssh"
+	OpWaitUntil Op = "wait_until"
 )
 
 // String returns a human-readable operation name.
@@ -44,6 +48,9 @@ type Step struct {
 	Resource string
 	Flags    []string
 	Color    string // Local presentation color for OpLog steps only.
+	Duration time.Duration
+	Interval time.Duration
+	Command  string // Remote readiness command for OpWaitUntil.
 }
 
 // MissingFlags returns any required flags not enabled in enabled.

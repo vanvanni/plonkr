@@ -29,7 +29,7 @@
 
 Plonkr automates the setup work that comes after creating a machine. Describe users, groups, repositories and ordered tasks in a profile, then run it against a host you can already reach over SSH. The command is **plonk**.
 
-**Beta — no stable release yet.** The current version is **2026.11.0-beta.2**. Install it with the scripts below or build from source. Interfaces and behavior may change before stable.
+**Beta — no stable release yet.** The current version is **2026.11.0-beta.3**. Install it with the scripts below or build from source. Interfaces and behavior may change before stable.
 
 ## What you can do
 
@@ -41,6 +41,7 @@ Plonkr automates the setup work that comes after creating a machine. Describe us
 - Preview a plan before connecting, enable profile-defined flags, or bypass selected tasks.
 - Add a `lock` to a task so it is bypassed when a path already exists or a command's result is unchanged since the last completed run (`--force` overrides).
 - Follow completed, failed, skipped and bypassed work in terminal output and saved logs.
+- Pause on the controller or wait for SSH and remote readiness commands with bounded, cancellable waits.
 
 Plonkr runs through your OpenSSH client and requires no agent on the target. Managed operations target Linux; systemd operations require systemd. Windows and Linux controller builds are available from source. Real SSH acceptance has been exercised with a Linux controller in a disposable Ubuntu 24.04 VM; native Windows SSH transport remains unverified.
 
@@ -148,7 +149,7 @@ The website and public docs live in `docs/`. Use `npm run check` to validate the
 
 ## Releases
 
-Plonkr uses CalVer: `YYYY.MM.PATCH`, with candidate versions such as `2026.11.0-beta.2`. Development happens on `develop`, candidates on `prerelease`, and stable releases on `main`. See [branches and release rules](BRANCHES.md).
+Plonkr uses CalVer: `YYYY.MM.PATCH`, with candidate versions such as `2026.11.0-beta.3`. Development happens on `develop`, candidates on `prerelease`, and stable releases on `main`. See [branches and release rules](BRANCHES.md).
 
 ## License
 

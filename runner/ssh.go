@@ -13,9 +13,10 @@ import (
 // SSH delegates configuration, authentication, and host-key verification to OpenSSH.
 // It never disables host-key checking or invokes a local shell.
 type SSH struct {
-	Host  string
-	TTY   bool
-	Stdin io.Reader
+	Host           string
+	TTY            bool
+	Stdin          io.Reader
+	ConnectTimeout time.Duration // Bounds connection establishment for readiness probes.
 }
 
 var hostPattern = regexp.MustCompile(`^[a-zA-Z0-9_\[][a-zA-Z0-9_.@:%+\[\]-]*$`)
@@ -56,6 +57,10 @@ func (s SSH) execute(ctx context.Context, command string, input io.Reader, stdou
 	if s.TTY {
 		args = []string{"-t"}
 	}
+	if s.ConnectTimeout > 0 {
+		seconds := max(1, int(s.ConnectTimeout/time.Second))
+		args = append(args, "-o", fmt.Sprintf("ConnectTimeout=%d", seconds))
+	}
 	// SSH concatenates remote argv into a single shell command; quote the entire
 	// script explicitly for remote sh, preserving embedded quotes and newlines.
 	remote := "sh -ec '" + strings.ReplaceAll(command, "'", `'"'"'`) + "'"
@@ -63,6 +68,11 @@ func (s SSH) execute(ctx context.Context, command string, input io.Reader, stdou
 
 	cmd := exec.CommandContext(ctx, "ssh", args...)
 	cmd.WaitDelay = 5 * time.Second
+	if s.ConnectTimeout > 0 {
+		// Probes must not spend the normal drain grace after their deadline,
+		// even if a ProxyCommand descendant keeps an output pipe open.
+		cmd.WaitDelay = time.Millisecond
+	}
 	cmd.Stdin = input
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr

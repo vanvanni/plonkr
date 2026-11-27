@@ -782,6 +782,30 @@ tasks {
                 process.wait(timeout=5)
             os.close(master)
 
+    def waiting(self):
+        self.write("wait-ssh", 'tasks {\n task "SSH" {\n order = 0\n setup = [wait_ssh("15s", "1s")]\n }\n}\n')
+        preview = self.apply("wait-ssh", "--dry-run")
+        check("planned" in preview.stdout, "Wait dry run was not planned")
+        self.shell("systemd-run --unit=plonkr-wait-restart --on-active=4s --timer-property=AccuracySec=100ms /bin/systemctl start ssh.socket ssh.service\n"
+                   "systemctl stop ssh.socket ssh.service")
+        try:
+            output = self.apply("wait-ssh").stdout
+            check("reachable after" in output and "Connection refused" in output, "SSH did not retry until restart")
+        finally:
+            self.shell("systemctl start ssh.socket ssh.service")
+        marker = self.scratch / "wait-ready"
+        command = f"if test -e {shlex.quote(str(marker))}; then true; else touch {shlex.quote(str(marker))}; echo NOT_READY >&2; exit 1; fi"
+        self.write("wait-condition", 'tasks {\n task "Ready" {\n order = 0\n script = [wait("1s"), wait_until('
+                   + quote(command) + ', "10s", "1s")]\n }\n}\n')
+        output = self.apply("wait-condition", "--tty").stdout
+        check("condition satisfied after" in output and "2 attempts" in output, "Command wait did not retry")
+        journal = max(self.logs.glob("*.log"), key=lambda path: path.stat().st_mtime_ns).read_text()
+        check("NOT_READY" in journal and "condition satisfied after" in journal, "Wait output missing from journal")
+        self.write("wait-timeout", 'tasks {\n task "Timeout" {\n order = 0\n script = [wait_until("echo STILL_NOT_READY >&2; exit 3", "3s", "1s")]\n }\n}\n')
+        output = self.apply("wait-timeout", expected=1).stdout
+        check("timed out after 3s" in output and "STILL_NOT_READY" in output, "Timeout lost its last reason")
+        self.apply("wait-timeout", "--bypass", "Timeout")
+
     def terminal_paths(self):
         self.write("terminal", 'tasks {\n' + task("Terminal", ["echo TERMINAL_READY; sleep 1"]) + '}\n')
         code, output = self.terminal("terminal")
@@ -828,6 +852,7 @@ def main():
             ("edge cases: include once, reserved flags, hostile names, CRLF, large output, failures", suite.edge_cases),
             ("whole-plan validation before remote changes", suite.invalid_plan_prevents_changes),
             ("real PTY TUI, remote tty and cancellation", suite.terminal_paths),
+            ("waiting: SSH restart, readiness, timeout, preview, bypass and journal", suite.waiting),
         ]:
             case(name, function)
     return int(any(result["status"] != "passed" for result in RESULTS))

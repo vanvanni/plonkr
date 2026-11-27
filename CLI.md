@@ -1,4 +1,31 @@
-# Plonkr CLI (`plonk`) — v2026.11.0-beta.2
+# Plonkr CLI (`plonk`) — v2026.11.0-beta.3
+
+## Waiting steps
+
+Use `wait("30s")` for a controller-side pause, `wait_ssh("2m")` to wait for
+an SSH login, and `wait_until("curl -fsS http://localhost:8080/health", "1m", "2s")`
+to retry a remote command until it exits zero. Each is one step, allowed in
+`setup` and `script`, inside `flag()` and in snippet commands. Commands run
+as the SSH login user with `sh -ec`; use `shellquote()` for argument values.
+
+Durations use Go `s`, `m` and `h` syntax and must total whole seconds between
+1 second and 1 hour. Retry intervals default to `5s` and must not exceed the
+timeout; specify a shorter interval explicitly for timeouts below 5 seconds.
+`args.*` values are checked during binding before any SSH connection.
+
+Retries start immediately and continue at the interval without overlapping.
+Each attempt is bounded by the remaining timeout, with SSH ConnectTimeout at
+most 10 seconds. Probes always disable PTY allocation and use BatchMode=yes,
+even with `--tty`. Connection and authentication failures retry; host-key
+verification failures stop immediately. The existing OpenSSH host-key policy
+is preserved: verify new machine identities and consider
+`StrictHostKeyChecking accept-new` for trusted lab addresses; for a verified
+recreated host remove its stale entry with `ssh-keygen -R HOST`.
+
+Output and the journal report changed failure reasons and a success summary;
+timeouts include the last reason. The TUI displays elapsed time. Ctrl+C cancels
+waits and in-flight probes. Dry runs mark waits planned without sleeping or
+connecting; flags, bypass and task locks apply normally.
 
 The `plonkr/` repository root implements the initial v2026.11.0 development CLI for **Plonkr** (`plonk`) in Go (`go 1.26.0` module floor).
 

@@ -79,7 +79,11 @@ timezone and result reporting. The application example is copied into scratch
 and its external repository/key/host-trust placeholders are replaced with fixture
 values; the checked-in example stays unchanged.
 
-The 17 guest scenario groups cover:
+The 18 guest scenario groups cover:
+
+- Waiting: recovery after sshd stops and restarts, command readiness retries,
+  timeout diagnostics, dry runs, bypass, noninteractive probes with `--tty`,
+  and summaries in the journal.
 
 - All shipped example profiles: validation, preview and execution (external
   placeholders are replaced in the application example). Adding another example
@@ -162,3 +166,12 @@ The first pass rejected a numeric unit variable as intended; the valid fixture n
 interpolates the port into a complete command string, and the numeric-only case
 has explicit rejection tests. Both disposable VMs were removed. Local forwarding
 and include fuzz campaigns passed more than 3.7 million inputs combined.
+
+2026-11-27: waiting steps passed the full 18-group Multipass suite on Ubuntu
+24.04 with Go 1.26.0, including all Linux race tests. The restart fixture uses
+an explicit systemd timer accuracy so sshd resumes within the test timeout.
+Native vet/tests and website validation passed with Go 1.27.2; parser fuzzing
+exercised more than 600,000 inputs. The release build uses Go 1.27.2 and updated
+crypto/text dependencies; govulncheck reports no reachable vulnerabilities with
+that toolchain. The disposable VM was removed. Native Windows SSH and Linux
+arm64 execution remain unverified.
