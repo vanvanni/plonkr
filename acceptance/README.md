@@ -114,3 +114,7 @@ approval, automatic key replacement and unknown/mismatched repository host keys.
 2026-11-27: added the task-lock scenario group. All 14 groups and Linux race checks
 passed from Windows on Ubuntu 24.04, with the repository SSH alias work
 included in the archive. The VM was removed.
+
+2026-11-27: full suite re-run on the committed `prerelease` tree before the first
+beta tag. All 14 groups and Linux race checks passed on Ubuntu 24.04 (about 3.5
+minutes) and the VM was removed.
