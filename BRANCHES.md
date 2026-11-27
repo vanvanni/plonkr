@@ -43,6 +43,13 @@ stable CLI code is promoted.
   An existing release is never overwritten by a rerun.
 - **Website:** builds branch/PR changes, but deploys to plonkr.dev only from `prerelease` (until a stable release lands on `main`).
 
+The website also publishes the installers [docs/install.sh](docs/install.sh) and
+[docs/install.ps1](docs/install.ps1) at `plonkr.dev/install.sh` and `/install.ps1`.
+They download the newest release that is published (a draft is invisible to them),
+prereleases included, and verify it against `SHA256SUMS`. Their archive names must
+stay in step with the **Release draft** workflow: `plonk_<tag>_<os>_<arch>.tar.gz`
+or `.zip` with `plonk` or `plonk.exe` at the archive root.
+
 Before tagging, run the full suite from the repository root:
 
 ```sh

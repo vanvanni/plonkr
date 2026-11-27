@@ -29,7 +29,7 @@
 
 Plonkr automates the setup work that comes after creating a machine. Describe users, groups, repositories and ordered tasks in a profile, then run it against a host you can already reach over SSH. The command is **plonk**.
 
-**Beta — no stable release yet.** The current version is **2026.11.0-beta.1**. Build from source to try it. Interfaces and behavior may change before stable.
+**Beta — no stable release yet.** The current version is **2026.11.0-beta.1**. Install it with the scripts below or build from source. Interfaces and behavior may change before stable.
 
 ## What you can do
 
@@ -42,6 +42,22 @@ Plonkr automates the setup work that comes after creating a machine. Describe us
 - Follow completed, failed, skipped and bypassed work in terminal output and saved logs.
 
 Plonkr runs through your OpenSSH client and requires no agent on the target. Managed operations target Linux; systemd operations require systemd. Windows and Linux controller builds are available from source. Real SSH acceptance has been exercised with a Linux controller in a disposable Ubuntu 24.04 VM; native Windows SSH transport remains unverified.
+
+## Install
+
+Linux (amd64, arm64):
+
+```sh
+curl -fsSL https://plonkr.dev/install.sh | sh
+```
+
+Windows (amd64), in PowerShell:
+
+```powershell
+irm https://plonkr.dev/install.ps1 | iex
+```
+
+The scripts install the newest GitHub release, prereleases included, after checking its SHA-256 checksum, and change nothing else. Linux installs to `/usr/local/bin` as root and `~/.local/bin` otherwise; Windows installs for the current user and adds the folder to your user `PATH`. Pass `--version`, `--dir` or `--uninstall` to `install.sh` (after `sh -s --`), or set `PLONK_VERSION`, `PLONK_INSTALL_DIR` or `PLONK_UNINSTALL` before running `install.ps1`. Their sources are [docs/install.sh](docs/install.sh) and [docs/install.ps1](docs/install.ps1). They were tested against a local copy of the release layout, not yet against a published release.
 
 ## Build from source
 

@@ -4,7 +4,7 @@ const root = resolve(import.meta.dirname, '..');
 const source = resolve(root, 'docs');
 async function walk(dir) { const entries = await readdir(dir,{withFileTypes:true}); return (await Promise.all(entries.map(e=>e.isDirectory()?walk(resolve(dir,e.name)):resolve(dir,e.name)))).flat(); }
 // Publish only website inputs; docs/design contains editable sources and private build tooling.
-const publicEntries = ['index.html', '404.html', 'guide', 'assets', 'CNAME', '.nojekyll', 'robots.txt', 'sitemap.xml'];
+const publicEntries = ['index.html', '404.html', 'guide', 'assets', 'CNAME', '.nojekyll', 'robots.txt', 'sitemap.xml', 'install.sh', 'install.ps1'];
 const files = (await Promise.all(publicEntries.map(async name => {
   const file = resolve(source, name);
   return (await stat(file)).isDirectory() ? walk(file) : [file];

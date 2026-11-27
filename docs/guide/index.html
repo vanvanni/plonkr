@@ -39,13 +39,30 @@
 <main class="article" id="main"><p class="kicker">docs / beta — no stable release yet</p><h1 id="overview">Machine setup with Plonkr</h1>
 <p class="lead">Prepare a machine you already have, using a profile that describes its setup.</p><p><strong>Plonkr</strong> is the product; <code>plonk</code> is the command. The intended workflow covers existing containers, VMs and bare metal reached over SSH. Creating the machine stays with your existing tools.</p>
 <h2 id="status">Read this first</h2>
-<div class="notice"><p><strong>Beta documentation — no stable release yet:</strong> the proof of concept has been reviewed, but there is no installable Plonkr release yet. These pages distinguish agreed v2026.11.0 behavior from proposed syntax and capabilities seen in the prototype. Examples are design examples, not commands to run against a released binary.</p></div><p>The initial prototype implements ordered SSH execution, profile composition, conditional steps, account setup, repository cloning and systemd unit-file installation. That is implementation evidence, not a guarantee of supported platforms or reliable reruns in the prerelease.</p>
+<div class="notice"><p><strong>Beta documentation — no stable release yet:</strong> the proof of concept has been reviewed, but Plonkr is installable only as a beta prerelease. These pages distinguish agreed v2026.11.0 behavior from proposed syntax and capabilities seen in the prototype. Examples are design examples, not commands to run against a released binary.</p></div><p>The initial prototype implements ordered SSH execution, profile composition, conditional steps, account setup, repository cloning and systemd unit-file installation. That is implementation evidence, not a guarantee of supported platforms or reliable reruns in the prerelease.</p>
 <h2 id="workflow">The workflow</h2>
 <ol><li>Create your target machine and establish SSH access.</li><li>Describe users, groups, repository access and setup work in a local profile.</li><li>Review the expanded plan before applying changes.</li><li>Run setup and inspect the results and log.</li></ol><p>The preview and execution workflow exists in the prototype. The final command grammar and platform support are still being agreed.</p>
 <h2 id="reading">Read the guide</h2>
 <ul><li><a href="profiles.html">Profiles and locations</a>: where profiles belong and how the storage change affects existing users.</li><li><a href="configuration.html">Configuration and tasks</a>: automatic user/group creation, explicit setup and proposed task structure.</li><li><a href="reference.html">Profile reference</a>: every profile key, its type, default and effect.</li><li><a href="repositories.html">Repository SSH keys</a>: unchanged key copying and target-user access.</li><li><a href="execution.html">Execution and results</a>: previews, failure behavior and limits.</li><li><a href="examples.html">Examples</a>: a proposed profile and explanations.</li></ul>
 <h2 id="installation">Installation</h2>
-<p>No Plonkr download, package or install command is published yet. Installation instructions will accompany a verified prerelease. The prototype's installer and old executable name are not Plonkr installation instructions.</p>
+<p>Plonkr is one executable, <code>plonk</code>, built for Linux (amd64, arm64) and Windows (amd64). It uses the OpenSSH client already on your machine. There is no stable release yet: the scripts below install the newest GitHub release, prereleases included, and interfaces may change before stable.</p>
+<p>On Linux:</p>
+<pre><code>curl -fsSL https://plonkr.dev/install.sh | sh</code></pre>
+<p>On Windows, in PowerShell:</p>
+<pre><code>irm https://plonkr.dev/install.ps1 | iex</code></pre>
+<p>Both scripts download the release archive, check it against the release's <code>SHA256SUMS</code> and install only <code>plonk</code>. Nothing else on the machine changes. Linux installs to <code>/usr/local/bin</code> as root and to <code>~/.local/bin</code> otherwise. Windows installs to <code>%LOCALAPPDATA%Programsplonk</code> for the current user, without administrator rights, and adds that folder to your user <code>PATH</code>. Read the scripts first if you like: <a href="../install.sh">install.sh</a> and <a href="../install.ps1">install.ps1</a>.</p>
+<p>Choose a version or folder, or remove Plonkr again:</p>
+<pre><code># Linux
+curl -fsSL https://plonkr.dev/install.sh | sh -s -- --version 2026.11.0-beta.1
+curl -fsSL https://plonkr.dev/install.sh | sh -s -- --dir ~/bin
+curl -fsSL https://plonkr.dev/install.sh | sh -s -- --uninstall
+
+# Windows (PowerShell)
+$env:PLONK_VERSION = '2026.11.0-beta.1'; irm https://plonkr.dev/install.ps1 | iex
+$env:PLONK_INSTALL_DIR = 'D:Toolsplonk'; irm https://plonkr.dev/install.ps1 | iex
+$env:PLONK_UNINSTALL = '1'; irm https://plonkr.dev/install.ps1 | iex</code></pre>
+<p>Check the result with <code>plonk version</code>. To build from source instead, see the <a href="https://github.com/vanvanni/plonkr#build-from-source">repository README</a>.</p>
+<p><strong>Verification:</strong> the installers were run against a local copy of the release layout on Ubuntu 22.04 (curl and wget) and in Windows PowerShell 5.1 and 7, including checksum mismatch, wrong version, reinstall and uninstall. They have not been run against a published release, and macOS is not supported.</p>
 <h2 id="reference">Command reference</h2>
 <p>The executable name is <code>plonk</code>. Its subcommands and flags are not finalized. The landing-page terminal is illustrative; it is not a command reference.</p>
 <h2 id="release">Road to v2026.11.0</h2>
