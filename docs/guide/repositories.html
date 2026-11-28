@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Repository SSH keys — Plonkr</title>
-<meta name="description" content="The agreed direct-file key contract for Plonkr repository setup.">
+<meta name="description" content="How Plonkr copies deploy keys, sets up SSH aliases and clones repositories on the target.">
 <meta name="theme-color" content="#0D0E12">
 <link rel="canonical" href="https://plonkr.dev/guide/repositories.html">
 <link rel="icon" href="../assets/favicon.ico" sizes="48x48">
@@ -37,9 +37,14 @@
 <a href="execution.html">Execution and results</a>
 <a href="examples.html">Examples</a></nav></aside>
 <main class="article" id="main"><p class="kicker">docs / beta — no stable release yet</p><h1 id="overview">Repository SSH keys</h1>
-<p class="lead">Use the key file you already have to give the target access to a repository.</p><p><strong>Agreed for v2026.11.0:</strong> the repository refers to a key file on the machine running <code>plonk</code>. Plonkr copies that file byte-for-byte to the selected target user's <code>.ssh/</code>. It preserves the local source and does not generate a key, decrypt it or re-encode it.</p>
+<p class="lead">Use the key file you already have to give the target access to a repository.</p><p>A repository refers to a deploy-key file on the machine running <code>plonk</code>. Plonkr copies that file byte-for-byte to the selected target user's <code>~/.ssh/</code>. It preserves the local source and does not generate, decrypt or re-encode the key.</p>
 <h2 id="destination">Destination and identity</h2>
-<p>The key is installed directly as <code>~/.ssh/plonkr-REPOSITORY.key</code> for the selected target user, without an application subdirectory. Identical bytes require no approval. A different existing key triggers a warning and a default-no confirmation. Use <code>--auto-approve</code> to approve replacements without prompting; the warning is still printed. Declining or providing no answer preserves the existing key.</p><p>The private-key store and stored-key identifiers have been removed. Specify a local file path instead of importing a key into Plonkr.</p>
+<p>The key is installed directly as <code>~/.ssh/plonkr-REPOSITORY.key</code> (mode <code>0600</code>) for the selected target user, without an application subdirectory. Identical bytes require no approval. A different existing key triggers a warning and a default-no confirmation. Use <code>--auto-approve</code> to approve replacements without prompting; the warning is still printed. Declining, or running unattended without <code>--auto-approve</code>, preserves the existing key.</p>
+<p>Each keyed repository gets a managed SSH alias, such as <code>your-repo.github.com</code>, in the target user's <code>~/.ssh/config</code>. The alias selects the deploy key, and Git uses it for the clone and for later pulls, so several repositories on one host can each use their own key. Explicit SSH URL ports are kept. Repeated runs update the managed block without duplicating it, and unrelated SSH settings are preserved.</p>
+<pre><code>Host your-repo.github.com
+  HostName github.com
+  IdentityFile ~/.ssh/plonkr-your-repo.key
+  IdentitiesOnly yes</code></pre>
 <h2 id="declaration">Repository declaration</h2>
 <pre><code class="language-hcl">repository "your-repo" {
   url  = "git@example.com:team/your-repo.git"
@@ -47,19 +52,21 @@
   user = "app"
   key  = "/home/operator/.ssh/your-repo"
   ref  = "main"
-}</code></pre><p><strong>Proposed HCL example:</strong> <code>key</code> is local to the controller; <code>path</code> and <code>user</code> describe the target. The example hostname is a placeholder. A proposed setup operation <code>repo("your-repo")</code> would perform repository setup.</p><p>For a Windows controller, a candidate HCL source path is <code>key = "C:/Users/operator/.ssh/your-repo"</code>. This is a design example; native Windows path support is not verified.</p>
+}</code></pre>
+<p><code>key</code> is a path on the controller; <code>path</code> and <code>user</code> describe the target. The hostname is a placeholder. A task clones the repository with <code>setup = [repo("your-repo")]</code>. On a Windows controller, write the key path as <code>key = "C:/Users/operator/.ssh/your-repo"</code>. <code>key</code> is only for SSH URLs: an <code>https://</code> repository with a <code>key</code> is rejected. All fields are listed in the <a href="reference.html#repository">profile reference</a>.</p>
 <h2 id="access">What a successful clone requires</h2>
-<ul><li>The repository provider must authorize the matching public key.</li><li>The target user must exist and have permission to create the checkout.</li><li>Git and OpenSSH must be available on the target.</li><li>Repository SSH server keys are accepted automatically, including unknown or changed keys.</li><li>An encrypted private key must be usable by SSH when Git authenticates.</li></ul><p>Connecting from your controller to the target and connecting from the target to the repository are separate SSH connections. Copying a repository key does not grant repository permissions. Repository Git operations use automatic host-key acceptance and do not verify server identity against <code>known_hosts</code>. The controller-to-target connection continues to use your OpenSSH host-key policy.</p>
+<ul><li>The repository provider must authorize the matching public key.</li><li>The target user must exist. When the checkout path does not exist and the user cannot create it, Plonkr creates it for that user if the SSH login is root or has passwordless sudo.</li><li>Git and OpenSSH must be available on the target.</li><li>The key must be unencrypted, use LF line endings and end with a newline. These are checked locally before connecting.</li></ul>
+<p>Connecting from your controller to the target and from the target to the repository are separate SSH connections. Copying a repository key does not grant repository permissions. Repository Git connections accept unknown or changed server host keys automatically and do not verify them against <code>known_hosts</code>, including later pulls through the checkout's saved SSH command. The controller-to-target connection keeps your normal OpenSSH host-key policy.</p>
 <h2 id="encryption">Encrypted files</h2>
-<p>An encrypted key remains encrypted after copying. Removing the store does not remove the need to unlock that key for authentication. The current beta rejects encrypted source keys during local preflight. Use an unencrypted deploy-key file; its bytes are copied unchanged.</p>
-<h2 id="prototype">What the prototype establishes</h2>
-<p>The prototype has a direct-file transfer path with SHA-256 verification, private file permissions and strict repository host-key checking. It also has a legacy store path that transforms the file. The new contract keeps unchanged copying and removes the store and application key subdirectory.</p><p>The beta verifies a matching existing checkout without updating it. Target key replacement requires the approval described above. Repository authorization, missing software and filesystem permissions can still cause an operation to fail.</p></main>
+<p>The beta rejects encrypted source keys during local preflight, before any connection. Use an unencrypted deploy-key file; its bytes are copied unchanged.</p>
+<h2 id="reruns">Repeat runs</h2>
+<p>An existing checkout of the same repository is verified, not updated: Plonkr does not pull for you. Existing checkouts are moved to the managed SSH alias. An empty existing directory is accepted as a clone target; a non-empty directory that is not the expected repository is refused. Repository authorization, missing software and filesystem permissions can still make the step fail.</p></main>
 <aside class="toc" aria-label="On this page"><h4>On this page</h4><nav><a href="#overview">Repository SSH keys</a>
 <a href="#destination">Destination and identity</a>
 <a href="#declaration">Repository declaration</a>
 <a href="#access">What a successful clone requires</a>
 <a href="#encryption">Encrypted files</a>
-<a href="#prototype">What the prototype establishes</a></nav></aside>
+<a href="#reruns">Repeat runs</a></nav></aside>
 </div></div>
 <footer class="site-footer">
   <div class="wrap">

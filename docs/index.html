@@ -57,7 +57,7 @@
           <div class="window-bar">
             <div class="dots" aria-hidden="true"><i></i><i></i><i></i></div>
             <span class="window-title">plonk</span>
-            <span class="window-tag">concept preview</span>
+            <span class="window-tag">example</span>
           </div>
           <div class="tablist" role="tablist" aria-label="Example machines">
             <button type="button" role="tab" id="tab-lxc" aria-selected="true" aria-controls="panel-lxc"><span class="tab-name">lab-ct</span><span class="tab-kind">LXC</span></button>
@@ -66,7 +66,7 @@
           </div>
           <div class="output">
             <div role="tabpanel" id="panel-lxc" aria-labelledby="tab-lxc" tabindex="0">
-              <span class="ln"><span class="prompt">$ </span>plonk <span class="cmt"># syntax pending</span></span>
+              <span class="ln"><span class="prompt">$ </span>plonk run lab-ct workstation</span>
               <span class="ln gap reveal-line"><span class="host">▸ lab-ct</span> <span class="dim">· LXC container · over SSH</span></span>
               <span class="ln step reveal-line"><span class="tick">✓</span><span>Connected</span><span class="note">1/4</span></span>
               <span class="ln step reveal-line"><span class="tick">✓</span><span>System updated</span><span class="note">2/4</span></span>
@@ -75,7 +75,7 @@
               <span class="ln gap reveal-line"><span class="prompt">$ </span><span class="cursor" aria-hidden="true"></span></span>
             </div>
             <div role="tabpanel" id="panel-vm" aria-labelledby="tab-vm" tabindex="0" hidden>
-              <span class="ln"><span class="prompt">$ </span>plonk <span class="cmt"># syntax pending</span></span>
+              <span class="ln"><span class="prompt">$ </span>plonk run dev-vm workstation</span>
               <span class="ln gap reveal-line"><span class="host">▸ dev-vm</span> <span class="dim">· virtual machine · over SSH</span></span>
               <span class="ln step reveal-line"><span class="tick">✓</span><span>Connected</span><span class="note">1/4</span></span>
               <span class="ln step reveal-line"><span class="tick">✓</span><span>System updated</span><span class="note">2/4</span></span>
@@ -84,7 +84,7 @@
               <span class="ln gap reveal-line"><span class="prompt">$ </span><span class="cursor" aria-hidden="true"></span></span>
             </div>
             <div role="tabpanel" id="panel-metal" aria-labelledby="tab-metal" tabindex="0" hidden>
-              <span class="ln"><span class="prompt">$ </span>plonk <span class="cmt"># syntax pending</span></span>
+              <span class="ln"><span class="prompt">$ </span>plonk run rack-01 workstation</span>
               <span class="ln gap reveal-line"><span class="host">▸ rack-01</span> <span class="dim">· bare metal · over SSH</span></span>
               <span class="ln step reveal-line"><span class="tick">✓</span><span>Connected</span><span class="note">1/4</span></span>
               <span class="ln step reveal-line"><span class="tick">✓</span><span>System updated</span><span class="note">2/4</span></span>
@@ -92,7 +92,7 @@
               <span class="ln step last reveal-line"><span class="tick">✓</span><span>Working environment ready</span><span class="note">4/4</span></span>
               <span class="ln gap reveal-line"><span class="prompt">$ </span><span class="cursor" aria-hidden="true"></span></span>
             </div>
-            <p class="aside" aria-hidden="true"><svg viewBox="0 0 44 18"><path d="M42 9C32 5 18 4 4 9M4 9l8-6M4 9l8 5"/></svg><span>still deciding this bit</span></p>
+            <p class="aside" aria-hidden="true"><svg viewBox="0 0 44 18"><path d="M42 9C32 5 18 4 4 9M4 9l8-6M4 9l8 5"/></svg><span>one profile, every machine</span></p>
             <button class="replay" type="button" id="replay" aria-label="Replay the example">↻ replay</button>
           </div>
           <div class="window-foot">Illustrative hostnames and output. See the guide for implementation status.</div>
@@ -129,7 +129,7 @@
         </div>
         <div class="pane hot">
           <div class="pane-head"><span>with plonkr</span><b>the idea</b></div>
-<pre><span class="hl">$ plonk</span> <span class="c"># syntax pending</span>
+<pre><span class="hl">$ plonk run HOST workstation</span> <span class="c"># per machine</span>
 <span class="hl">▸ lab-ct</span>
 <span class="v">  ✓</span> system updated
 <span class="v">  ✓</span> git, curl, wget installed
@@ -187,7 +187,7 @@
           <ul>
             <li><strong>A way to create machines.</strong> Keep using whatever you use now.</li>
             <li><strong>Stable.</strong> It’s a beta. You can <a href="guide/index.html#installation">install the latest prerelease</a>, but interfaces may change.</li>
-            <li><strong>Decided.</strong> Command syntax, config format and supported platforms wait for the proof of concept.</li>
+            <li><strong>For every system.</strong> Managed setup targets Linux, and service units need systemd.</li>
           </ul>
         </div>
       </div>

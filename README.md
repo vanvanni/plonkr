@@ -47,7 +47,7 @@ Beta.5 also includes the internal [plugin framework](CLI.md#plugins-framework).
 No provider ships yet; Proxmox and `.plonkr` integration remain proposals.
 Controller-only profiles can use `plonk run PROFILE` without an SSH host.
 
-Plonkr runs through your OpenSSH client and requires no agent on the target. Managed operations target Linux; systemd operations require systemd. Windows and Linux controller builds are available from source. Real SSH acceptance has been exercised with a Linux controller in a disposable Ubuntu 24.04 VM; native Windows SSH transport remains unverified.
+Plonkr runs through your OpenSSH client and requires no agent on the target. Managed operations target Linux; systemd operations require systemd. Linux and Windows controller builds ship as release archives and can also be built from source. Real SSH acceptance has been exercised with a Linux controller in a disposable Ubuntu 24.04 VM; native Windows SSH transport remains unverified.
 
 ## Install
 
