@@ -107,7 +107,7 @@ plonk run my-host ./examples/arguments.hcl --arg app_name=api --dry-run</code></
 <p><code>validate</code> never prompts. With missing required inputs it reports checked argument contracts and unresolved names; this does not mean the profile is ready to execute. Supply values for a fully resolved validation. A dry run collects and validates inputs like a real run, without SSH.</p>
 <p>Use inputs in configuration values, repository fields, unit <code>vars</code> and task bodies, including locks. Block labels, include/snippet/flag names and unit <code>source</code> remain static. Use <code>shellquote(args.name)</code> for one complete POSIX shell argument, without adding surrounding quotes. Raw interpolation does not provide shell quoting. Rendered values can appear in previews, commands, logs and target output; inputs are not a secret store.</p>
 <p>HCL preserves the type of a single-value interpolation: <code>"${args.port}"</code> remains numeric when <code>port</code> is an integer. Unit <code>vars</code> require strings. Interpolate numbers into complete strings, for example <code>exec_start = "/usr/bin/server --port ${args.port}"</code>.</p>
-<p>Verified on Ubuntu 24.04 with Go 1.26.0: all 17 Multipass scenario groups and Linux race tests pass, including real terminal retries, defaults, cancellation, TUI startup after questions and literal shell quoting. Native Windows console interaction and SSH transport remain unverified.</p>
+<p>Verified on Ubuntu 24.04 with Go 1.26.0 by the Multipass acceptance suite, including real terminal retries, defaults, cancellation, TUI startup after questions and literal shell quoting. Native Windows console interaction and SSH transport remain unverified.</p>
 <h2 id="plugins">Plugins</h2>
 <p>Beta.5 includes the internal framework for first-party compiled-in integrations. <strong>No provider ships yet.</strong> Proxmox and the <code>.plonkr</code> environment file remain proposals; provider examples cannot run in this build.</p>
 <p>The framework loads settings with <code>plugin "provider" { ... }</code>, accepts named definitions with <code>provider "label" { action = "object" ... }</code>, and calls them in order with <code>provider("label", ...)</code> in <code>setup</code>. Settings merge across includes; conflicting values and duplicate definition names fail before execution. Sensitive inline string attributes are redacted.</p>
@@ -115,7 +115,6 @@ plonk run my-host ./examples/arguments.hcl --arg app_name=api --dry-run</code></
 <p><code>validate</code> is offline. A plugin dry run may read its external API and show differences, but never modifies objects or uses SSH. Bypassed and flag-disabled steps do not connect. Plugin runs use plain output. Plugin calls buffer up to 1 MiB before redaction and show their sanitized diff before approval; core SSH output streams through a redactor that handles credentials split across writes.</p>
 <p><code>plonk run PROFILE</code> omits HOST for profiles containing only plugin, controller wait and log steps. Profiles with SSH work or task locks require <code>plonk run HOST PROFILE</code>, even when those steps are disabled.</p>
 <h2 id="configuration">configuration</h2>
-<p>For controller integrations, see the <a href="#plugins">plugin framework</a>.</p>
 <p>Declares the accounts and timezone the machine should have. Groups and users with <code>create = true</code> (the default) and the timezone become an automatic first task called <strong>Configuration</strong>, which runs before your own tasks in this order: groups, users, timezone.</p>
 <div class="table-wrap"><table>
 <thead><tr><th>Key</th><th>Type</th><th>What it does</th></tr></thead>
@@ -197,8 +196,8 @@ plonk run my-host ./examples/arguments.hcl --arg app_name=api --dry-run</code></
 <tr><td><code>order</code></td><td>integer</td><td>required</td><td>Position of the task, 0 or higher. Must be unique within the profile.</td></tr>
 <tr><td><code>bypass</code></td><td>bool</td><td><code>false</code></td><td>Skip this task and report it as bypassed. <code>plonk run --bypass "NAME"</code> does the same for a single run.</td></tr>
 <tr><td><code>lock</code></td><td>block</td><td>none</td><td>Bypass this task when the target already matches. See <a href="#lock">lock</a>.</td></tr>
-<tr><td><code>setup</code></td><td>list</td><td>none</td><td>Managed operations on declared resources. See <a href="#functions">functions</a>.</td></tr>
-<tr><td><code>script</code></td><td>list</td><td>none</td><td>Shell commands as strings, plus <code>run()</code>, <code>flag()</code> and <code>log()</code>. Each string runs in its own remote shell, so a <code>cd</code> does not carry over.</td></tr>
+<tr><td><code>setup</code></td><td>list</td><td>none</td><td>Managed operations on declared resources, plus <code>flag()</code>, <code>log()</code>, the <a href="#waiting">waiting</a> functions and <a href="#plugins">plugin</a> calls. See <a href="#functions">functions</a>.</td></tr>
+<tr><td><code>script</code></td><td>list</td><td>none</td><td>Shell commands as strings, plus <code>run()</code>, <code>flag()</code>, <code>log()</code> and the <a href="#waiting">waiting</a> functions. Each string runs in its own remote shell, so a <code>cd</code> does not carry over.</td></tr>
 </tbody></table></div>
 <p>Each task needs at least one step in <code>setup</code> or <code>script</code>.</p>
 <h3 id="lock">lock</h3>
@@ -240,6 +239,10 @@ plonk run my-host ./examples/arguments.hcl --arg app_name=api --dry-run</code></
 <tr><td><code>shellquote(value)</code></td><td>value expressions</td><td>Quote a string as one complete POSIX shell argument. Do not add surrounding quotes.</td></tr>
 <tr><td><code>flag("NAME", STEP, ...)</code></td><td>setup, script</td><td>Run the steps only when <code>--NAME</code> is passed to <code>plonk run</code>; otherwise they are reported as skipped. Names are lowercase with <code>-</code>. Names of built-in options are reserved and rejected when the profile is loaded: <code>help</code>, <code>tty</code>, <code>dry-run</code>, <code>no-tui</code>, <code>profiles-dir</code>, <code>bypass</code>, <code>version</code>, <code>auto-approve</code>, <code>force</code> and <code>arg</code>.</td></tr>
 <tr><td><code>log("MESSAGE", "COLOR")</code></td><td>setup, script</td><td>Print a message locally. The optional color is one of <code>default</code>, <code>black</code>, <code>red</code>, <code>green</code>, <code>yellow</code>, <code>blue</code>, <code>magenta</code>, <code>cyan</code>, <code>white</code> or <code>gray</code>.</td></tr>
+<tr><td><code>wait("30s")</code></td><td>setup, script</td><td>Pause on the controller. See <a href="#waiting">waiting</a>.</td></tr>
+<tr><td><code>wait_ssh("2m")</code></td><td>setup, script</td><td>Retry an SSH login until it succeeds or the timeout passes.</td></tr>
+<tr><td><code>wait_until("COMMAND", "1m", "2s")</code></td><td>setup, script</td><td>Retry a remote command until it exits zero; the interval is optional and defaults to 5s.</td></tr>
+<tr><td><code>PROVIDER("LABEL", ...)</code></td><td>setup</td><td>Call named <a href="#plugins">plugin</a> definitions in order. No provider ships in this beta.</td></tr>
 </tbody></table></div>
 <pre><code class="language-hcl">tasks {
   task "Deploy application" {

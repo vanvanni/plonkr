@@ -63,11 +63,12 @@ Do not tag `develop`; release checks reject its unpromoted commits.
 
 ## GitHub setup still required
 
-The remote is `https://github.com/vanvanni/plonkr.git`; local commits have not
-been pushed by this setup. Set the default branch to `develop` while development continues. Protect
+The remote is `https://github.com/vanvanni/plonkr.git`. Consider making `develop`
+the default branch while development continues. Protect
 all three branches against force pushes/deletion and require PR review and the
 Checks jobs before merging. Restrict version-tag creation to maintainers. Configure
-Pages and the `github-pages` environment for `main` only. Repository settings,
+Pages and the `github-pages` environment for `prerelease` until a stable release
+lands on `main` (see [Pages setup](PAGES.md)). Repository settings,
 branch protections and release publication are separate from these workflow files.
 
 The main domain can explain the beta before a stable CLI is released. Promote
